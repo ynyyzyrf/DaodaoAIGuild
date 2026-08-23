@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+.next/
+out/
+
+# Env
+.env
+.env.local
+*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+report.xml
+*.log
+
+# Tooling / local state
+.omc/
+.workbuddy/
+.img2threejs/
+backup/
+
+# Build caches
+*.tsbuildinfo
+
+# Local debug screenshots
+debug-header.png
+profile-gamification.png

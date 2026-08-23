@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- 可复用组件类（见 docs/UI-STYLE.md §7）---- */
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-200;
+  }
+  .card-hover {
+    @apply transition-all duration-150 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[0_8px_24px_rgba(16,24,40,0.06)] active:-translate-y-0.5;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-brand-500 text-white hover:bg-brand-600;
+  }
+  .btn-secondary {
+    @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900;
+  }
+  .btn-ghost {
+    @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/15;
+  }
+  .label {
+    @apply block text-sm font-medium text-slate-700;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium;
+  }
+  .badge-gray {
+    @apply bg-slate-100 text-slate-600;
+  }
+  .badge-red {
+    @apply bg-brand-50 text-brand-600;
+  }
+  .badge-green {
+    @apply bg-green-50 text-green-700;
+  }
+  .badge-amber {
+    @apply bg-amber-50 text-amber-700;
+  }
+  .badge-orange {
+    @apply bg-orange-50 text-orange-700;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium transition-colors;
+  }
+  .chip-active {
+    @apply bg-brand-500 text-white;
+  }
+  .chip-idle {
+    @apply bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 hover:text-slate-900;
+  }
+}
+
+.markdown {
+  line-height: 1.7;
+  color: #334155;
+}
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  font-weight: 700;
+  color: #0f172a;
+  margin: 1.5rem 0 0.75rem;
+}
+.markdown h1 {
+  font-size: 1.6rem;
+}
+.markdown h2 {
+  font-size: 1.3rem;
+}
+.markdown h3 {
+  font-size: 1.1rem;
+}
+.markdown p {
+  margin: 0.75rem 0;
+}
+.markdown ul,
+.markdown ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+.markdown ul {
+  list-style: disc;
+}
+.markdown ol {
+  list-style: decimal;
+}
+.markdown code {
+  background: #f1f5f9;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}
+.markdown pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+.markdown pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+.markdown blockquote {
+  border-left: 4px solid #e2e8f0;
+  padding-left: 1rem;
+  color: #64748b;
+  margin: 0.75rem 0;
+}
+.markdown a {
+  color: #dc2626;
+  text-decoration: underline;
+}
+.markdown table {
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+}
+.markdown th,
+.markdown td {
+  border: 1px solid #e2e8f0;
+  padding: 0.4rem 0.75rem;
+}
+.markdown img {
+  max-width: 100%;
+  border-radius: 0.5rem;
+}
