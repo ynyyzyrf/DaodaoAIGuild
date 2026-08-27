@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
+  Bot,
   LogOut,
+  MessageSquareText,
   Plus,
   Search,
   Shield,
@@ -137,7 +139,7 @@ function UserMenu({ user }: { user: CurrentUser }) {
           {/* 分隔线 */}
           <div className="mx-2 my-1.5 border-t border-slate-100" />
 
-          {/* 菜單項：個人中心 / 管理後台（僅管理員）/ 帳號設定 */}
+          {/* 菜單項：個人中心 / My Agents / 管理後台（僅管理員）/ 帳號設定 */}
           <Link
             href={`/users/${user.id}`}
             role="menuitem"
@@ -145,6 +147,14 @@ function UserMenu({ user }: { user: CurrentUser }) {
           >
             <UserIcon size={16} strokeWidth={2} />
             個人中心
+          </Link>
+          <Link
+            href="/agents"
+            role="menuitem"
+            className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-600"
+          >
+            <Bot size={16} strokeWidth={2} />
+            My Agents
           </Link>
           {isAdmin && (
             <Link
@@ -245,6 +255,14 @@ export default function Nav() {
               {KNOWLEDGE_BASE.label}
             </a>
           </div>
+
+          <Link
+            href="/rooms"
+            className={`${BTN_BASE} hidden border border-slate-200 px-4 text-slate-700 hover:bg-slate-50 sm:inline-flex`}
+          >
+            <MessageSquareText size={15} strokeWidth={2} />
+            房間
+          </Link>
 
           <Link
             href="/tutorials/new"

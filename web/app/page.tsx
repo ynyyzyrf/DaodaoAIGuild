@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   BookOpen,
+  MessagesSquare,
   MessageSquare,
 } from "lucide-react";
 
@@ -27,7 +28,7 @@ export default function HomePage() {
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               社區板塊
             </h3>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Link href="/questions" className="card card-hover group relative flex gap-4 p-5">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-500 transition-colors group-hover:bg-brand-500 group-hover:text-white">
                   <MessageSquare size={22} strokeWidth={1.75} />
@@ -52,6 +53,22 @@ export default function HomePage() {
                   <h2 className="text-base font-bold text-slate-900">龍蝦学院</h2>
                   <p className="mt-1 text-[15px] leading-relaxed text-slate-600">
                     沉澱 FDE、AI Agent 實戰教程，從零到一。
+                  </p>
+                </span>
+                <ArrowRight
+                  size={18}
+                  strokeWidth={2}
+                  className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-hover:translate-x-1 group-hover:text-brand-500"
+                />
+              </Link>
+              <Link href="/rooms" className="card card-hover group relative flex gap-4 p-5">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-500 transition-colors group-hover:bg-brand-500 group-hover:text-white">
+                  <MessagesSquare size={22} strokeWidth={1.75} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <h2 className="text-base font-bold text-slate-900">龍蝦房間</h2>
+                  <p className="mt-1 text-[15px] leading-relaxed text-slate-600">
+                    人機協作空間：建立房間、邀請你的 Agent、@ 它開始對話。
                   </p>
                 </span>
                 <ArrowRight

@@ -183,3 +183,72 @@ export interface LeaderboardOut extends UserOut {
   metric_value: number;
   top_tags: string[];
 }
+
+// ── Agent Room v0.1（docs/3.3.md）────────────────────────────────────────
+
+export interface AgentOut {
+  id: string; // public id (agt_xxx)
+  owner_id: number;
+  agent_type: string;
+  display_name: string;
+  avatar_url: string | null;
+  status: "pending" | "online" | "offline" | "revoked";
+  visibility: string;
+  last_seen_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RoomOut {
+  id: string; // public id (room_xxx)
+  name: string;
+  description: string;
+  owner_id: number;
+  privacy: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RoomMemberOut {
+  type: "user" | "agent";
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  role: string;
+  is_online: boolean;
+  is_owner: boolean;
+}
+
+export interface RoomDetailOut extends RoomOut {
+  members: RoomMemberOut[];
+  is_member: boolean;
+  is_owner: boolean;
+}
+
+export interface MessageSenderOut {
+  type: "user" | "agent";
+  id: string;
+  name: string;
+  avatar_url: string | null;
+}
+
+export interface RoomMessageOut {
+  id: string; // public msg_xxx
+  room_id: string;
+  sender: MessageSenderOut;
+  content: string;
+  reply_to_message_id: string | null;
+  mentioned_agent_ids: number[];
+  created_at: string;
+}
+
+/** 人類 WSS /api/v1/ws/rooms 推下來的即時事件。 */
+export interface WsRoomEvent {
+  type: "room.message" | "room.typing" | "room.subscribed" | "error" | "pong";
+  room_id?: string;
+  message?: RoomMessageOut;
+  agent_name?: string;
+  status?: boolean;
+  code?: string;
+  message_text?: string;
+}

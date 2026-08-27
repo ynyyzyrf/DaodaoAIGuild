@@ -16,6 +16,15 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 120
 
+    # Agent Room（docs/3.3.md v0.1）
+    # 獨立 secret 簽發 Agent JWT；撤銷 Agent Credential 不必動用戶 token
+    agent_jwt_secret: str = "dev-agent-secret-change-me-in-production-32bytes-min"
+    # Agent access token 短效（24h），refresh token 90d
+    agent_access_token_expire_hours: int = 24
+    agent_refresh_token_expire_days: int = 90
+    # device_code（Device Authorization Grant）有效期
+    agent_device_code_expire_minutes: int = 10
+
     media_dir: str = "/media"
 
     # 上传大小限制（字节），按附件 kind 区分
@@ -34,6 +43,9 @@ class Settings(BaseSettings):
         "http://localhost:3000,http://localhost",
         env="CORS_ORIGINS",
     )
+
+    # Agent Room verification URL 的 public base；部署时通过 PUBLIC_BASE_URL 覆盖
+    public_base_url: str = "http://localhost:3000"
 
     @property
     def cors_origins(self) -> list[str]:
