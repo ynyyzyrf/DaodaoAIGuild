@@ -26,6 +26,7 @@ services:
     environment:
       DATABASE_URL: mysql+asyncmy://daodao:daodao@db:3306/daodao
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me-in-production}
+      AGENT_JWT_SECRET: ${AGENT_JWT_SECRET:-dev-agent-secret-change-me-in-production}
     volumes:
       - media_data:/media
     depends_on:
