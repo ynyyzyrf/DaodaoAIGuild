@@ -168,6 +168,200 @@ export interface TutorialCreatePayload {
   category: string;
 }
 
+export interface CompanyMemberUserOut {
+  id: number;
+  username: string;
+  display_name: string;
+  avatar_url: string;
+  company_role: "owner" | "admin" | "none" | string;
+  fde_status: "none" | "active" | "released" | string;
+}
+
+export interface CompanyMembersOut {
+  owner: CompanyMemberUserOut | null;
+  admins: CompanyMemberUserOut[];
+  lobster_knights: CompanyMemberUserOut[];
+}
+
+export interface CompanyOut {
+  id: number;
+  applicant_id: number;
+  name: string;
+  logo_url: string;
+  description: string;
+  location: string;
+  contact_name: string;
+  contact_email: string;
+  service_fields: string;
+  strengths: string;
+  cases: string;
+  status: string;
+  review_note: string;
+  lobster_knight_count: number;
+  members: CompanyMembersOut;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompanyCreatePayload {
+  name: string;
+  logo_url?: string;
+  description?: string;
+  location?: string;
+  contact_name?: string;
+  contact_email?: string;
+  service_fields?: string;
+  strengths?: string;
+  cases?: string;
+}
+
+export interface CompanyJoinRequestOut {
+  id: number;
+  company_id: number;
+  user_id: number;
+  status: string;
+  requested_at: string;
+  processed_at: string | null;
+  processed_by: number | null;
+}
+
+export interface CompanyJoinRequestUserOut {
+  id: number;
+  username: string;
+  display_name: string;
+  avatar_url: string;
+}
+
+export interface CompanyJoinRequestWithUserOut extends CompanyJoinRequestOut {
+  user: CompanyJoinRequestUserOut;
+}
+
+export interface CompanyMyStateOut {
+  active_company: CompanyOut | null;
+  pending_join_request: CompanyJoinRequestOut | null;
+  managed_companies: CompanyOut[];
+}
+
+export interface DemandOrderOut {
+  id: number;
+  creator_id: number;
+  enterprise_name: string;
+  contact_name: string;
+  contact_email: string;
+  product_name: string;
+  pmdesktop_product_id: string;
+  pmdesktop_sync_status: string;
+  pmdesktop_requirement_id: string;
+  pmdesktop_user_voice_id: string;
+  pmdesktop_sync_error: string;
+  pmdesktop_synced_at: string | null;
+  budget_amount: number;
+  budget_note: string;
+  expected_delivery_at: string | null;
+  title: string;
+  description: string;
+  business_background: string;
+  deliverable_expectation: string;
+  attachments: string;
+  status: string;
+  review_note: string;
+  reviewed_by: number | null;
+  reviewed_at: string | null;
+  claimed_company_id: number | null;
+  claimed_company_name: string;
+  assigned_fde_user_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DemandOrderCreatePayload {
+  enterprise_name: string;
+  contact_name?: string;
+  contact_email?: string;
+  product_name?: string;
+  pmdesktop_product_id?: string;
+  budget_amount?: number;
+  budget_note?: string;
+  expected_delivery_at?: string | null;
+  title: string;
+  description?: string;
+  business_background?: string;
+  deliverable_expectation?: string;
+  attachments?: string;
+}
+
+export interface PmDesktopProductOut {
+  id: string;
+  name: string;
+  status: string;
+}
+
+export interface OrderClaimOut {
+  id: number;
+  order_id: number;
+  company_id: number;
+  operator_user_id: number;
+  status: string;
+  claim_note: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderQuoteCreatePayload {
+  amount?: number;
+  currency?: string;
+  start_at?: string | null;
+  delivery_at?: string | null;
+  scope?: string;
+  deliverables?: string;
+  exclusions?: string;
+  risks?: string;
+  enterprise_dependencies?: string;
+}
+
+export interface OrderQuoteOut extends OrderQuoteCreatePayload {
+  id: number;
+  order_id: number;
+  company_id: number;
+  amount: number;
+  currency: string;
+  owner_user_id: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderDeliveryOut {
+  id: number;
+  order_id: number;
+  company_id: number;
+  submitted_by: number;
+  summary: string;
+  deliverable_urls: string;
+  status: string;
+  acceptance_note: string;
+  accepted_by: number | null;
+  accepted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FdeProjectRecordOut {
+  id: number;
+  order_id: number;
+  fde_user_id: number;
+  company_id: number;
+  project_title: string;
+  product_name: string;
+  role: string;
+  skill_tags: string;
+  enterprise_score: number | null;
+  company_score: number | null;
+  is_public_case: boolean;
+  completed_at: string | null;
+  created_at: string;
+}
+
 /** 首页「社區正在發生」单条动态。 */
 export interface FeedItemOut {
   kind: "question" | "tutorial" | "rescue";

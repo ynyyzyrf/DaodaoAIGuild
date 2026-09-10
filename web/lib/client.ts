@@ -1,4 +1,4 @@
-import { clearToken, getToken, notifyAuthChanged } from "./auth";
+import { clearToken, getRefreshToken, getToken, notifyAuthChanged, setAuthSession } from "./auth";
 import type { ApiResponse } from "./types";
 
 /** 业务码：登录态失效（token 过期 / 无效 / 用户被删）。命中后全局清掉登录态。 */
@@ -15,7 +15,48 @@ export class ApiClientError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+let refreshPromise: Promise<boolean> | null = null;
+
+function redirectToLogin() {
+  clearToken();
+  notifyAuthChanged();
+  if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+    const next = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.assign(`/login?next=${next}`);
+  }
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  if (!refreshPromise) {
+    refreshPromise = fetch("/api/v1/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+      .then(async (res) => {
+        const body = (await res.json()) as ApiResponse<{
+          access_token: string;
+          refresh_token: string;
+          user: unknown;
+        }>;
+        if (!res.ok || body.code !== 0) return false;
+        setAuthSession(body.data.access_token, body.data.refresh_token, body.data.user);
+        notifyAuthChanged();
+        return true;
+      })
+      .catch(() => false)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+}
+
+async function request<T>(path: string, options: RequestInit = {}, canRefresh = true): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> | undefined),
@@ -37,12 +78,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   // 登录态失效：清掉 localStorage + 通知 Nav 刷新 + 跳到登录页
   // 避免「点个人中心提示骑士不存在」类 stale localStorage 假象
   if (AUTH_FAILURE_CODES.has(body.code)) {
-    clearToken();
-    notifyAuthChanged();
-    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-      const next = encodeURIComponent(window.location.pathname + window.location.search);
-      window.location.assign(`/login?next=${next}`);
+    if (body.code === 41002 && canRefresh && path !== "/auth/refresh") {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        return request<T>(path, options, false);
+      }
     }
+    redirectToLogin();
   }
 
   if (body.code !== 0) {

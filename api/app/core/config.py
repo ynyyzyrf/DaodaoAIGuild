@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-secret-change-me-in-production-32bytes-min"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 120
+    refresh_token_expire_days: int = 30
 
     # Agent Room（docs/3.3.md v0.1）
     # 獨立 secret 簽發 Agent JWT；撤銷 Agent Credential 不必動用戶 token
@@ -46,6 +47,19 @@ class Settings(BaseSettings):
 
     # Agent Room verification URL 的 public base；部署时通过 PUBLIC_BASE_URL 覆盖
     public_base_url: str = "http://localhost:3000"
+
+    # OMEACCOUNT：前端获取 OME token 后，后端用 employee-info 校验 token 并换成本系统 session。
+    ome_external_api_base: str = ""
+    ome_employee_info_endpoint: str = "/api/user/employee-info"
+    ome_language: str = ""
+    ome_tenant_id: str = ""
+    ome_platform: str = ""
+    ome_request_timeout_seconds: int = 10
+
+    # PM Desktop：DaoStore 只保存配置名，真实 API key 由部署环境注入。
+    pm_desktop_api_base: str = "https://pmdesktop.daodaoagi.com"
+    pm_desktop_api_key: str = ""
+    pm_desktop_request_timeout_seconds: int = 10
 
     @property
     def cors_origins(self) -> list[str]:

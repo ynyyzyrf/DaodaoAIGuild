@@ -27,6 +27,9 @@ async def get_current_user(session: SessionDep, credentials: CredentialsDep) -> 
     except jwt.PyJWTError as err:
         raise ApiError(code=41001, message="无效令牌", status_code=401) from err
 
+    if payload.get("type") != "access":
+        raise ApiError(code=41001, message="无效令牌", status_code=401)
+
     user_id = int(payload.get("sub"))
     repo = UserRepository(session)
     user = await repo.get_by_id(user_id)

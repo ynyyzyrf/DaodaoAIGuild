@@ -3,13 +3,32 @@ export function getToken(): string | null {
   return localStorage.getItem("token");
 }
 
+export function getRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("refresh_token");
+}
+
 export function setToken(token: string) {
   localStorage.setItem("token", token);
 }
 
+export function setRefreshToken(token: string) {
+  localStorage.setItem("refresh_token", token);
+}
+
+export function setAuthSession(token: string, refreshToken: string, user: unknown) {
+  setToken(token);
+  setRefreshToken(refreshToken);
+  localStorage.setItem("user", JSON.stringify(user));
+}
+
 export function clearToken() {
   localStorage.removeItem("token");
+  localStorage.removeItem("refresh_token");
   localStorage.removeItem("user");
+  localStorage.removeItem("external_token");
+  localStorage.removeItem("userInfo");
+  localStorage.removeItem("currentUserName");
 }
 
 const AUTH_CHANGE_EVENT = "daodao:auth-change";

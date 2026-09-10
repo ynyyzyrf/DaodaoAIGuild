@@ -23,8 +23,22 @@ def create_access_token(user_id: int, username: str) -> str:
     payload = {
         "sub": str(user_id),
         "username": username,
+        "type": "access",
         "iat": now,
         "exp": now + timedelta(minutes=settings.access_token_expire_minutes),
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
+def create_refresh_token(user_id: int, username: str) -> str:
+    settings = get_settings()
+    now = datetime.now(UTC)
+    payload = {
+        "sub": str(user_id),
+        "username": username,
+        "type": "refresh",
+        "iat": now,
+        "exp": now + timedelta(days=settings.refresh_token_expire_days),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
@@ -36,6 +50,7 @@ def create_admin_access_token(user_id: int, username: str) -> str:
     payload = {
         "sub": str(user_id),
         "username": username,
+        "type": "access",
         "admin": True,
         "iat": now,
         "exp": now + timedelta(minutes=settings.admin_token_expire_minutes),

@@ -15,8 +15,11 @@ from app.api.routes import (
 from app.api.routes import (
     answers,
     auth,
+    companies,
     health,
     home,
+    orders,
+    pmdesktop,
     questions,
     tags,
     tutorials,
@@ -55,6 +58,11 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
     app.include_router(home.router, prefix=settings.api_v1_prefix)
     app.include_router(users.router, prefix=settings.api_v1_prefix)
+    app.include_router(companies.router, prefix=settings.api_v1_prefix)
+    app.include_router(orders.router, prefix=settings.api_v1_prefix)
+    app.include_router(orders.opportunities_router, prefix=settings.api_v1_prefix)
+    app.include_router(orders.company_orders_router, prefix=settings.api_v1_prefix)
+    app.include_router(pmdesktop.router, prefix=settings.api_v1_prefix)
     app.include_router(questions.router, prefix=settings.api_v1_prefix)
     app.include_router(answers.router, prefix=settings.api_v1_prefix)
     app.include_router(tags.router, prefix=settings.api_v1_prefix)
@@ -71,6 +79,8 @@ def create_app() -> FastAPI:
 
     # 管理后台 V3.2（docs/3.2.md）
     app.include_router(admin_routes.auth.router, prefix=settings.api_v1_prefix)
+    app.include_router(admin_routes.companies.router, prefix=settings.api_v1_prefix)
+    app.include_router(admin_routes.orders.router, prefix=settings.api_v1_prefix)
     app.include_router(admin_routes.dashboard.router, prefix=settings.api_v1_prefix)
     app.include_router(admin_routes.users.router, prefix=settings.api_v1_prefix)
     app.include_router(admin_routes.moderation.router, prefix=settings.api_v1_prefix)

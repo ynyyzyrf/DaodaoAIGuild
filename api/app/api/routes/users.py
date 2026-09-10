@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Query
 
@@ -8,12 +8,14 @@ from app.repositories.tag import TagRepository
 from app.repositories.user import UserRepository
 from app.schemas.common import ApiResponse
 from app.schemas.gamification import TitleSetRequest
+from app.schemas.order import FdeProjectRecordOut
 from app.schemas.question import QuestionOut
 from app.schemas.tutorial import TutorialOut
 from app.schemas.user import LeaderboardOut, MeOut, UserOut, UserProfileOut
 from app.services import gamification
 from app.services import question as question_service
 from app.services import tutorial as tutorial_service
+from app.services.order import OrderService
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -35,7 +37,7 @@ async def leaderboard(
         rows = await repo.top_by_tutorial_count(limit)
     elif metric == "rescue":
         # DB 存的是 naive UTC（server_default=func.now()），这里也用 naive UTC 对齐
-        since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
+        since = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=7)
         rows = await repo.top_by_rescue_count(limit, since)
     else:
         users = await repo.top_by_reputation(limit)
@@ -108,3 +110,10 @@ async def get_user_tutorials(user_id: int, session: SessionDep, limit: int = Que
         raise ApiError(code=40002, message="用户不存在", status_code=404)
     items = await tutorial_service.list_tutorials_by_author(session, user_id, limit)
     return ApiResponse(data=items)
+
+
+@router.get("/{user_id}/project-records", response_model=ApiResponse[list[FdeProjectRecordOut]])
+async def get_user_project_records(user_id: int, session: SessionDep):
+    if await UserRepository(session).get_by_id(user_id) is None:
+        raise ApiError(code=40002, message="用户不存在", status_code=404)
+    return ApiResponse(data=await OrderService(session).list_fde_project_records(user_id))

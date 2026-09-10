@@ -10,8 +10,6 @@ import {
   Home,
   MessageSquare,
   Tags as TagsIcon,
-  Trophy,
-  Users,
 } from "lucide-react";
 import { listCategories, listTags } from "@/lib/api";
 import {
@@ -19,13 +17,11 @@ import {
   setCollapsed,
   subscribeCollapsed,
 } from "@/lib/sidebar-state";
-import { DAOCLAW_COMMUNITY } from "@/lib/site";
 
 const MAIN_ITEMS = [
-  { href: "/", label: "首页", icon: Home, match: "/" },
-  { href: "/questions", label: "问题广场", icon: MessageSquare, match: "/questions" },
-  { href: "/tutorials", label: "龍蝦学院", icon: BookOpen, match: "/tutorials" },
-  { href: DAOCLAW_COMMUNITY.path, label: "龍蝦社区", icon: Users, match: DAOCLAW_COMMUNITY.path },
+  { href: "/", label: "首頁", icon: Home, match: "/" },
+  { href: "/tutorials", label: "龍蝦學院", icon: BookOpen, match: "/tutorials" },
+  { href: "/questions", label: "問題廣場", icon: MessageSquare, match: "/questions" },
 ];
 
 const W_EXPANDED = "w-[240px]";
@@ -195,29 +191,6 @@ export default function SidebarNav() {
           </div>
         )}
 
-        {/* 社区 */}
-        <div className="mt-6">
-          {!collapsed && (
-            <h3 className="px-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
-              社区
-            </h3>
-          )}
-          <ul className="mt-2 flex flex-col gap-0.5 px-2">
-            <li>
-              <Link
-                href="/#rankings"
-                title={collapsed ? "騎士排行榜" : undefined}
-                aria-label={collapsed ? "騎士排行榜" : undefined}
-                className={`group relative flex items-center gap-2 rounded-xl py-2 font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 ${
-                  collapsed ? "justify-center px-2" : "px-3"
-                }`}
-              >
-                <Trophy size={16} strokeWidth={2} className="text-amber-500" />
-                {!collapsed && <span>騎士排行榜</span>}
-              </Link>
-            </li>
-          </ul>
-        </div>
       </div>
     </aside>
   );

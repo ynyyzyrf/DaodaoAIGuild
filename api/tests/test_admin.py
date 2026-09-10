@@ -59,6 +59,166 @@ async def test_dashboard(client, admin_headers):
 
 
 @pytest.mark.asyncio
+async def test_dashboard_surfaces_order_fulfillment_operations(client, admin_headers, db):
+    """Dashboard should lead with the demand-order fulfillment loop, not only content health."""
+    from datetime import datetime, timedelta
+
+    from app.core.security import hash_password
+    from app.models.company import Company, CompanyJoinRequest, CompanyMember
+    from app.models.order import DemandOrder, OrderClaim
+    from app.models.user import User
+
+    now = datetime.utcnow()
+    async with db() as session:
+        enterprise = User(username="enterprise_dash", password_hash=hash_password("pass1234"), display_name="需求方")
+        owner = User(username="owner_dash", password_hash=hash_password("pass1234"), display_name="公司 Owner")
+        fde = User(
+            username="fde_dash",
+            password_hash=hash_password("pass1234"),
+            display_name="FDE",
+            is_verified_fde=True,
+        )
+        session.add_all([enterprise, owner, fde])
+        await session.flush()
+
+        approved_company = Company(
+            applicant_id=owner.id,
+            name="已入駐咨詢公司",
+            status="approved",
+            submitted_at=now - timedelta(days=5),
+            reviewed_at=now - timedelta(days=4),
+        )
+        pending_company = Company(applicant_id=owner.id, name="待審公司", status="pending")
+        empty_approved_company = Company(applicant_id=owner.id, name="暫無 FDE 公司", status="approved")
+        session.add_all([approved_company, pending_company, empty_approved_company])
+        await session.flush()
+
+        session.add_all(
+            [
+                CompanyMember(
+                    company_id=approved_company.id,
+                    user_id=owner.id,
+                    company_role="owner",
+                    fde_status="none",
+                ),
+                CompanyMember(
+                    company_id=approved_company.id,
+                    user_id=fde.id,
+                    company_role="none",
+                    fde_status="active",
+                ),
+                CompanyJoinRequest(company_id=approved_company.id, user_id=fde.id, status="pending"),
+            ]
+        )
+
+        pending_review = DemandOrder(
+            creator_id=enterprise.id,
+            enterprise_name="需求方 A",
+            title="待審核需求",
+            status="pending_review",
+            created_at=now - timedelta(hours=25),
+            updated_at=now - timedelta(hours=25),
+        )
+        opportunity_without_claim = DemandOrder(
+            creator_id=enterprise.id,
+            enterprise_name="需求方 B",
+            title="機會池無承接",
+            status="opportunity_pool",
+            created_at=now - timedelta(days=3),
+            updated_at=now - timedelta(days=3),
+        )
+        opportunity_with_claim = DemandOrder(
+            creator_id=enterprise.id,
+            enterprise_name="需求方 C",
+            title="待確認承接方",
+            status="opportunity_pool",
+            created_at=now - timedelta(hours=3),
+            updated_at=now - timedelta(hours=3),
+        )
+        claimed_without_fde = DemandOrder(
+            creator_id=enterprise.id,
+            enterprise_name="需求方 D",
+            title="已承接未分配 FDE",
+            status="claimed",
+            claimed_company_id=approved_company.id,
+            created_at=now - timedelta(days=4),
+            updated_at=now - timedelta(days=4),
+        )
+        pending_payment = DemandOrder(
+            creator_id=enterprise.id,
+            enterprise_name="需求方 E",
+            title="待支付",
+            status="pending_payment",
+        )
+        accepted = DemandOrder(
+            creator_id=enterprise.id,
+            enterprise_name="需求方 F",
+            title="待結算",
+            status="accepted",
+            created_at=now - timedelta(days=2),
+            updated_at=now - timedelta(days=2),
+        )
+        quoted = DemandOrder(
+            creator_id=enterprise.id,
+            enterprise_name="需求方 G",
+            title="已報價未確認",
+            status="quoted",
+            created_at=now - timedelta(days=3),
+            updated_at=now - timedelta(days=3),
+        )
+        session.add_all(
+            [
+                pending_review,
+                opportunity_without_claim,
+                opportunity_with_claim,
+                claimed_without_fde,
+                pending_payment,
+                accepted,
+                quoted,
+            ]
+        )
+        await session.flush()
+        session.add(
+            OrderClaim(
+                order_id=opportunity_with_claim.id,
+                company_id=approved_company.id,
+                operator_user_id=owner.id,
+                status="interested",
+            )
+        )
+        await session.commit()
+
+    resp = await client.get("/api/v1/admin/dashboard", headers=admin_headers)
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+
+    assert data["order_pipeline"]["pending_review"] == 1
+    assert data["order_pipeline"]["opportunity_pool"] == 2
+    assert data["order_pipeline"]["claimed"] == 1
+    assert data["order_pipeline"]["pending_payment"] == 1
+    assert data["order_pipeline"]["accepted"] == 1
+    assert data["platform_actions"] == {
+        "requirement_reviews": 1,
+        "claim_confirmations": 2,
+        "simulated_payments": 1,
+        "settlements": 1,
+    }
+    assert data["supply_readiness"] == {
+        "approved_companies": 2,
+        "active_lobster_knights": 1,
+        "companies_with_lobster_knights": 1,
+        "pending_join_requests": 1,
+    }
+    assert data["fulfillment_alerts"] == {
+        "pending_reviews_over_24h": 1,
+        "opportunities_without_claim_48h": 1,
+        "claimed_without_fde_3d": 1,
+        "quoted_unconfirmed_48h": 1,
+        "accepted_unsettled_24h": 1,
+    }
+
+
+@pytest.mark.asyncio
 async def test_user_management_flow(client, admin_headers, auth_headers):
     """管理员可查看用户列表、停用用户、调等级（均留痕）。"""
     # 列表

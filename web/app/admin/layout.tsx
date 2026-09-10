@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
+  BadgeCheck,
+  Building2,
   ClipboardList,
   Database,
   FileSearch,
@@ -13,11 +15,15 @@ import {
   ScrollText,
   Users,
 } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
 import { clearAdminSession, getAdminToken, getAdminUser } from "@/lib/admin-auth";
 import type { AdminUser } from "@/lib/admin-api";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "仪表板", icon: LayoutDashboard, exact: true },
+  { href: "/admin/orders", label: "需求訂單", icon: ClipboardList },
+  { href: "/admin/companies", label: "咨詢公司管理", icon: Building2 },
+  { href: "/admin/knights", label: "龍蝦騎士管理", icon: BadgeCheck },
   { href: "/admin/users", label: "用户管理", icon: Users },
   { href: "/admin/moderation", label: "内容审核", icon: FileSearch },
   { href: "/admin/missions", label: "任务管理", icon: ClipboardList },
@@ -35,6 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     // 管理员在前台登录后即拥有后台权限（后台复用前台登录态）
     const cached = getAdminUser<AdminUser>();
     if (!getAdminToken() || cached?.is_admin !== true) {
+      setLoading(false);
       router.replace("/admin/login");
       return;
     }
@@ -64,11 +71,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* 侧边栏 */}
       <aside className="fixed inset-y-0 left-0 z-30 flex w-56 flex-col border-r border-slate-200 bg-white">
         <div className="flex h-16 items-center gap-2.5 border-b border-slate-100 px-5">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-xl ring-1 ring-brand-100">
-            🦞
-          </span>
+          <BrandLogo size="sm" />
           <div className="leading-tight">
-            <div className="text-sm font-bold text-slate-900">DaoDao Admin</div>
+            <div className="text-sm font-bold text-slate-900">Daostore Admin</div>
             <div className="text-[11px] text-slate-400">管理后台</div>
           </div>
         </div>
