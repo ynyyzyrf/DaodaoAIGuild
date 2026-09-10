@@ -295,7 +295,7 @@ export function RoomChat({ roomId }: { roomId: string }) {
           </div>
         </div>
 
-        <MembersPanel room={room} onAgentInvited={() => window.location.reload()} />
+        <MembersPanel room={room} />
       </div>
     </main>
   );

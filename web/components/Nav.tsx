@@ -4,19 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  Bot,
+  Building2,
+  ClipboardList,
   LogOut,
-  MessageSquareText,
-  Plus,
-  Search,
   Shield,
-  Sparkles,
   User as UserIcon,
 } from "lucide-react";
 import { clearToken, getCurrentUser, subscribeAuth } from "@/lib/auth";
 import type { CurrentUser } from "@/lib/auth";
-import { KNOWLEDGE_BASE } from "@/lib/site";
 import Avatar from "@/components/Avatar";
+import BrandLogo from "@/components/BrandLogo";
 import LevelBadge from "@/components/LevelBadge";
 import QuickNav from "@/components/QuickNav";
 
@@ -24,43 +21,6 @@ import QuickNav from "@/components/QuickNav";
 // 保证文字 / icon 在所有按钮里都垂直居中（不依赖内部 span 包裹）
 const BTN_BASE =
   "inline-flex h-11 items-center justify-center gap-1.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap";
-
-// ── 搜索框 ────────────────────────────────────────────────────────
-
-function SearchInput() {
-  const [query, setQuery] = useState("");
-
-  function submit() {
-    if (!query.trim()) return;
-    // 全局搜索（后端有搜索路由后再接入）
-    // 目前先做占位跳转
-    const q = encodeURIComponent(query.trim());
-    window.open(`/tutorials?q=${q}`, "_self");
-  }
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        submit();
-      }}
-      className="relative"
-    >
-      <Search
-        size={18}
-        strokeWidth={2}
-        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"
-      />
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="搜索教程、知識、應用..."
-        className="h-11 w-80 rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-500/10"
-      />
-    </form>
-  );
-}
 
 // ── 用户下拉 ───────────────────────────────────────────────────────
 
@@ -139,22 +99,14 @@ function UserMenu({ user }: { user: CurrentUser }) {
           {/* 分隔线 */}
           <div className="mx-2 my-1.5 border-t border-slate-100" />
 
-          {/* 菜單項：個人中心 / My Agents / 管理後台（僅管理員）/ 帳號設定 */}
+          {/* 菜單項：個人中心 / 管理後台（僅管理員）/ 帳號設定 */}
           <Link
-            href={`/users/${user.id}`}
+            href="/me"
             role="menuitem"
             className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-600"
           >
             <UserIcon size={16} strokeWidth={2} />
             個人中心
-          </Link>
-          <Link
-            href="/agents"
-            role="menuitem"
-            className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-600"
-          >
-            <Bot size={16} strokeWidth={2} />
-            My Agents
           </Link>
           {isAdmin && (
             <Link
@@ -224,60 +176,39 @@ export default function Nav() {
     >
       {/* 整條 Header 採用 w-full + justify-between；不再 max-width 居中 */}
       <div className="flex h-[76px] w-full items-center justify-between px-4 sm:px-6 lg:px-10">
-        {/* ── Left Group：品牌 + 搜索 ── */}
+        {/* ── Left Group：品牌 ── */}
         <div className="flex min-w-0 items-center gap-8">
           <Link href="/" className="inline-flex h-11 shrink-0 items-center gap-3">
-            <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-2xl ring-1 ring-inset ring-brand-100">
-              🦞
-            </span>
+            <BrandLogo />
             <span className="text-xl font-extrabold tracking-tight text-slate-900">
-              DaoDao <span className="text-brand-500">AI Guild</span>
+              Daostore <span className="text-brand-500">AI Guild</span>
             </span>
           </Link>
 
-          {/* 搜索框：xl+ 才显示，避免中屏拥挤 */}
-          <div className="hidden xl:flex">
-            <SearchInput />
-          </div>
         </div>
 
-        {/* ── Right Group：一鍵導航 + 知識庫 + 寫教程 + 提問 + 用戶 ── */}
+        {/* ── Right Group：精簡常駐操作；站內入口收進 QuickNav ── */}
         <div className="flex shrink-0 items-center gap-2">
-          {/* 一鍵導航 / 知識庫：放寫教程左邊一點點；xl+ 才显示，避免中屏拥挤 */}
-          <div className="hidden items-center gap-1.5 xl:flex">
-            <QuickNav />
-            <a
-              href={KNOWLEDGE_BASE.url}
-              target={KNOWLEDGE_BASE.newTab ? "_blank" : undefined}
-              rel={KNOWLEDGE_BASE.newTab ? "noreferrer" : undefined}
-              className={`${BTN_BASE} px-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900`}
-            >
-              {KNOWLEDGE_BASE.label}
-            </a>
-          </div>
+          {user && (
+            <div className="hidden items-center gap-1.5 md:flex">
+              <QuickNav />
+            </div>
+          )}
 
           <Link
-            href="/rooms"
+            href={user ? "/companies/new" : "/login?next=%2Fcompanies%2Fnew"}
             className={`${BTN_BASE} hidden border border-slate-200 px-4 text-slate-700 hover:bg-slate-50 sm:inline-flex`}
           >
-            <MessageSquareText size={15} strokeWidth={2} />
-            房間
+            <Building2 size={15} strokeWidth={2.2} />
+            申請入駐
           </Link>
 
           <Link
-            href="/tutorials/new"
-            className={`${BTN_BASE} hidden border border-slate-200 px-4 text-slate-700 hover:bg-slate-50 sm:inline-flex`}
-          >
-            <Sparkles size={15} strokeWidth={2} />
-            寫教程
-          </Link>
-
-          <Link
-            href="/questions/new"
+            href={user ? "/orders/new" : "/login?next=%2Forders%2Fnew"}
             className={`${BTN_BASE} bg-brand-500 px-5 text-white hover:bg-brand-600`}
           >
-            <Plus size={15} strokeWidth={2.5} />
-            提問
+            <ClipboardList size={15} strokeWidth={2.4} />
+            提交需求
           </Link>
 
           {user ? (

@@ -14,7 +14,7 @@ export default function RoomsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">龍蝦房間</h1>
           <p className="mt-1 text-sm text-slate-500">
-            人類與 Agent 的協作空間。建立房間、邀請 Agent、@ 它開始對話。
+            基礎討論空間，用於社區交流、問題沉澱與小範圍同步。
           </p>
         </div>
         <Link href="/rooms/new" className="btn btn-primary">

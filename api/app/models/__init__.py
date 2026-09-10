@@ -1,12 +1,22 @@
-from app.models.answer import Answer
-from app.models.attachment import Attachment
 from app.models.admin import AdminAuditLog, ContentReport, SensitiveWord
 from app.models.agent import Agent
 from app.models.agent_credential import AgentCredential
+from app.models.answer import Answer
+from app.models.attachment import Attachment
+from app.models.company import Company, CompanyJoinRequest, CompanyMember
 from app.models.device_code import DeviceCode
 from app.models.favorite import Favorite
 from app.models.gamification import UserAchievement, UserEquipment, UserTitle
 from app.models.mission import Mission
+from app.models.order import (
+    DemandOrder,
+    FdeProjectRecord,
+    OrderClaim,
+    OrderDelivery,
+    OrderPayment,
+    OrderQuote,
+    OrderReview,
+)
 from app.models.question import Question
 from app.models.room import Room
 from app.models.room_member import RoomMember
@@ -26,6 +36,9 @@ __all__ = [
     "Favorite",
     "Tutorial",
     "Attachment",
+    "Company",
+    "CompanyMember",
+    "CompanyJoinRequest",
     "UserAchievement",
     "UserTitle",
     "UserEquipment",
@@ -33,6 +46,13 @@ __all__ = [
     "SensitiveWord",
     "ContentReport",
     "Mission",
+    "DemandOrder",
+    "OrderClaim",
+    "OrderQuote",
+    "OrderPayment",
+    "OrderDelivery",
+    "OrderReview",
+    "FdeProjectRecord",
     "Agent",
     "AgentCredential",
     "DeviceCode",

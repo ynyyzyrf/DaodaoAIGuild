@@ -1,6 +1,6 @@
 /** 管理后台 API 类型与接口（docs/3.2.md）。 */
 import { adminApi } from "./admin";
-import type { Paginated } from "./types";
+import type { CompanyOut, DemandOrderOut, Paginated } from "./types";
 
 // ---------- 类型 ----------
 
@@ -100,6 +100,26 @@ export interface DashboardData {
   active_knights_7d: number;
   trend: { date: string; questions: number; answers: number; tutorials: number }[];
   alerts: { zero_answer_questions: number; overdue_missions: number };
+  order_pipeline: Record<string, number>;
+  platform_actions: {
+    requirement_reviews: number;
+    claim_confirmations: number;
+    simulated_payments: number;
+    settlements: number;
+  };
+  supply_readiness: {
+    approved_companies: number;
+    active_lobster_knights: number;
+    companies_with_lobster_knights: number;
+    pending_join_requests: number;
+  };
+  fulfillment_alerts: {
+    pending_reviews_over_24h: number;
+    opportunities_without_claim_48h: number;
+    claimed_without_fde_3d: number;
+    quoted_unconfirmed_48h: number;
+    accepted_unsettled_24h: number;
+  };
 }
 
 // ---------- 登录 ----------
@@ -151,6 +171,50 @@ export function updateAdminUser(id: number, data: Record<string, unknown>) {
 
 export function resetAdminUserPassword(id: number) {
   return adminApi.post<{ username: string; new_password: string }>(`/users/${id}/reset-password`);
+}
+
+// ---------- 咨詢公司 ----------
+
+export type AdminCompanyStatus = "draft" | "pending" | "requires_changes" | "approved" | "rejected";
+
+export function listAdminCompanies(params: { page?: number; page_size?: number; status?: AdminCompanyStatus } = {}) {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.page_size) qs.set("page_size", String(params.page_size));
+  if (params.status) qs.set("status", params.status);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return adminApi.get<Paginated<CompanyOut>>(`/companies${suffix}`);
+}
+
+export function reviewAdminCompany(id: number, status: "requires_changes" | "approved" | "rejected", reason: string) {
+  return adminApi.post<CompanyOut>(`/companies/${id}/review`, { status, reason });
+}
+
+// ---------- 需求訂單 ----------
+
+export function listAdminOrders(params: { page?: number; page_size?: number; status?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.page_size) qs.set("page_size", String(params.page_size));
+  if (params.status) qs.set("status", params.status);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return adminApi.get<Paginated<DemandOrderOut>>(`/orders${suffix}`);
+}
+
+export function reviewAdminOrder(id: number, status: "approved" | "rejected", reason: string) {
+  return adminApi.post<DemandOrderOut>(`/orders/${id}/review`, { status, reason });
+}
+
+export function selectAdminOrderClaim(orderId: number, claimId: number) {
+  return adminApi.post<DemandOrderOut>(`/orders/${orderId}/select-claim`, { claim_id: claimId });
+}
+
+export function simulateAdminOrderPayment(orderId: number, note = "") {
+  return adminApi.post<DemandOrderOut>(`/orders/${orderId}/simulate-payment`, { note });
+}
+
+export function settleAdminOrder(orderId: number, note = "") {
+  return adminApi.post<DemandOrderOut>(`/orders/${orderId}/settle`, { note });
 }
 
 // ---------- 审核 ----------

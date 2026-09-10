@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Search, Shield } from "lucide-react";
-import { listAdminUsers, updateAdminUser } from "@/lib/admin-api";
+import { listAdminUsers } from "@/lib/admin-api";
 import type { AdminUser } from "@/lib/admin-api";
-import ConfirmDialog from "../ConfirmDialog";
 
 const LEVEL_LABELS: Record<number, string> = {
   1: "小龍蝦",
@@ -39,15 +38,6 @@ function UsersContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // 操作状态
-  const [confirm, setConfirm] = useState<{
-    user: AdminUser;
-    action: "toggle_active" | "level" | "reputation";
-    value?: number;
-  } | null>(null);
-  const [reason, setReason] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -66,30 +56,6 @@ function UsersContent() {
     load();
   }, [load]);
 
-  async function submitAction() {
-    if (!confirm) return;
-    setSubmitting(true);
-    try {
-      if (confirm.action === "toggle_active") {
-        await updateAdminUser(confirm.user.id, {
-          is_active: !confirm.user.is_active,
-          reason,
-        });
-      } else if (confirm.action === "level") {
-        await updateAdminUser(confirm.user.id, { level: confirm.value, reason });
-      } else if (confirm.action === "reputation") {
-        await updateAdminUser(confirm.user.id, { reputation: confirm.value, reason });
-      }
-      await load();
-      setConfirm(null);
-      setReason("");
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "操作失败");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   function setPage(p: number) {
     const sp = new URLSearchParams(searchParams);
     sp.set("page", String(p));
@@ -103,7 +69,7 @@ function UsersContent() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">用户管理</h1>
         <p className="mt-1 text-sm text-slate-500">
-          共 {total} 位骑士 · 可停用、调等级、调声望、标记 FDE
+          共 {total} 位用户 · 龍蝦騎士身份暫時由管理員人工配置
         </p>
       </div>
 
@@ -187,7 +153,7 @@ function UsersContent() {
                       <span className={`badge ${u.is_active ? "badge-green" : "badge-red"}`}>
                         {u.is_active ? "启用" : "停用"}
                       </span>
-                      {u.is_verified_fde && <span className="badge badge-amber ml-1.5">FDE</span>}
+                      {u.is_verified_fde && <span className="badge badge-amber ml-1.5">龍蝦騎士</span>}
                     </td>
                     <td className="px-5 py-3 text-xs text-slate-500">
                       {u.created_at.slice(0, 10)}
@@ -229,37 +195,6 @@ function UsersContent() {
           </div>
         )}
       </div>
-
-      {/* 操作确认弹窗 */}
-      <ConfirmDialog
-        open={confirm !== null}
-        title={
-          confirm?.action === "toggle_active"
-            ? confirm.user.is_active
-              ? "停用该用户？"
-              : "启用该用户？"
-            : confirm?.action === "level"
-              ? `将 ${confirm.user.display_name || confirm.user.username} 调整为 Lv${confirm?.value}`
-              : "调整声望？"
-        }
-        description={
-          confirm?.action === "toggle_active"
-            ? `停用后 ${confirm.user.display_name || confirm.user.username} 将无法登录，内容保留。`
-            : confirm?.action === "level"
-              ? "修改等级会覆盖用户当前等级。"
-              : `将声望调整为 ${confirm?.value}（覆盖当前值）。`
-        }
-        confirmLabel="确认"
-        loading={submitting}
-        reasonRequired
-        reason={reason}
-        onReasonChange={setReason}
-        onConfirm={submitAction}
-        onCancel={() => {
-          setConfirm(null);
-          setReason("");
-        }}
-      />
     </div>
   );
 }

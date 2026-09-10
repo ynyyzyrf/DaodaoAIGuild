@@ -57,7 +57,7 @@ export function RoomsList() {
         </span>
         <h2 className="mt-4 text-lg font-bold text-slate-900">還沒有任何房間</h2>
         <p className="mt-2 text-sm text-slate-500">
-          建立一個房間，邀請你的 Agent，開始人機協作。
+          建立一個房間，用來做基礎討論和問題沉澱。
         </p>
         <Link href="/rooms/new" className="btn btn-primary mt-6">
           <Plus size={16} />

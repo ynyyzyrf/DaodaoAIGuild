@@ -6,8 +6,10 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import to_naive_utc, utc_now
 from app.core.security import hash_password
 from app.models.answer import Answer
+from app.models.company import CompanyMember
 from app.models.question import Question
 from app.models.tutorial import Tutorial
 from app.models.user import User
@@ -94,9 +96,40 @@ class AdminUserService:
             user.reputation = reputation
         if is_verified_fde is not None:
             user.is_verified_fde = is_verified_fde
+            if is_verified_fde:
+                await self._activate_single_company_role_as_fde(user.id)
         await self.session.commit()
         await self.session.refresh(user)
         return user
+
+    async def _activate_single_company_role_as_fde(self, user_id: int) -> None:
+        active = (
+            await self.session.execute(
+                select(CompanyMember).where(
+                    CompanyMember.user_id == user_id,
+                    CompanyMember.fde_status == "active",
+                )
+            )
+        ).scalar_one_or_none()
+        if active is not None:
+            return
+
+        result = await self.session.execute(
+            select(CompanyMember).where(
+                CompanyMember.user_id == user_id,
+                CompanyMember.company_role.in_(["owner", "admin"]),
+            )
+        )
+        role_members = list(result.scalars().all())
+        if len(role_members) != 1:
+            return
+
+        member = role_members[0]
+        if member.fde_status != "none":
+            return
+        member.fde_status = "active"
+        member.fde_joined_at = member.fde_joined_at or to_naive_utc(utc_now())
+        member.fde_exited_at = None
 
     async def reset_password(self, user: User) -> str:
         new_password = _gen_password()

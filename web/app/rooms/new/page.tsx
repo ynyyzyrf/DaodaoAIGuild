@@ -50,7 +50,7 @@ export default function NewRoomPage() {
             🏠
           </span>
           <h1 className="mt-4 text-xl font-bold text-slate-900">新建房間</h1>
-          <p className="mt-1 text-sm text-slate-500">Private 房間，只有你邀請的人與 Agent 能加入。</p>
+          <p className="mt-1 text-sm text-slate-500">Private 房間，用於基礎討論和小範圍同步。</p>
         </div>
 
         <form onSubmit={handleCreate} className="mt-8 space-y-4">
@@ -78,7 +78,7 @@ export default function NewRoomPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="input mt-1 min-h-[72px] resize-y"
-              placeholder="這個房間要做什麼？"
+              placeholder="這個房間主要討論什麼？"
               maxLength={255}
             />
           </div>

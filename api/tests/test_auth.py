@@ -5,6 +5,7 @@ async def test_login_success(client, seed_user):
     body = resp.json()
     assert body["code"] == 0
     assert body["data"]["access_token"]
+    assert body["data"]["refresh_token"]
     assert body["data"]["user"]["username"] == "admin"
 
 
@@ -28,6 +29,34 @@ async def test_me_with_token(client, seed_user):
     resp = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json()["data"]["username"] == "admin"
+
+
+async def test_refresh_issues_new_access_token(client, seed_user):
+    await seed_user()
+    login = await client.post("/api/v1/auth/login", json={"username": "admin", "password": "admin123"})
+    refresh_token = login.json()["data"]["refresh_token"]
+
+    resp = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["code"] == 0
+    assert body["data"]["access_token"]
+    assert body["data"]["refresh_token"] == refresh_token
+    me = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {body['data']['access_token']}"})
+    assert me.status_code == 200
+    assert me.json()["data"]["username"] == "admin"
+
+
+async def test_refresh_token_cannot_access_me(client, seed_user):
+    await seed_user()
+    login = await client.post("/api/v1/auth/login", json={"username": "admin", "password": "admin123"})
+    refresh_token = login.json()["data"]["refresh_token"]
+
+    resp = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {refresh_token}"})
+
+    assert resp.status_code == 401
+    assert resp.json()["code"] == 41001
 
 
 async def test_get_user_not_found(client):

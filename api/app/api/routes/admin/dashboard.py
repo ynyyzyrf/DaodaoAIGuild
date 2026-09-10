@@ -2,11 +2,13 @@
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 
 from app.api.deps import AdminDep, SessionDep
 from app.models.answer import Answer
+from app.models.company import Company, CompanyJoinRequest, CompanyMember
 from app.models.mission import Mission
+from app.models.order import DemandOrder, OrderClaim
 from app.models.question import Question
 from app.models.tutorial import Tutorial
 from app.models.user import User
@@ -78,6 +80,86 @@ async def get_dashboard(session: SessionDep, _: AdminDep):
         )
     )
 
+    order_statuses = [
+        "pending_review",
+        "opportunity_pool",
+        "claimed",
+        "requirement_following",
+        "quoted",
+        "confirmed",
+        "pending_payment",
+        "paid",
+        "delivering",
+        "pending_acceptance",
+        "accepted",
+        "settled",
+        "rated",
+    ]
+    order_pipeline = {
+        status: await _count(select(func.count()).select_from(DemandOrder).where(DemandOrder.status == status))
+        for status in order_statuses
+    }
+    claim_exists = exists().where(OrderClaim.order_id == DemandOrder.id)
+    platform_actions = {
+        "requirement_reviews": order_pipeline["pending_review"],
+        "claim_confirmations": order_pipeline["opportunity_pool"],
+        "simulated_payments": order_pipeline["pending_payment"],
+        "settlements": order_pipeline["accepted"],
+    }
+
+    supply_readiness = {
+        "approved_companies": await _count(
+            select(func.count()).select_from(Company).where(Company.status == "approved")
+        ),
+        "active_lobster_knights": await _count(
+            select(func.count()).select_from(CompanyMember).where(CompanyMember.fde_status == "active")
+        ),
+        "companies_with_lobster_knights": await _count(
+            select(func.count(func.distinct(CompanyMember.company_id))).where(CompanyMember.fde_status == "active")
+        ),
+        "pending_join_requests": await _count(
+            select(func.count()).select_from(CompanyJoinRequest).where(CompanyJoinRequest.status == "pending")
+        ),
+    }
+
+    hours_48 = now - timedelta(hours=48)
+    days_3 = now - timedelta(days=3)
+    hours_24 = now - timedelta(hours=24)
+    fulfillment_alerts = {
+        "pending_reviews_over_24h": await _count(
+            select(func.count()).select_from(DemandOrder).where(
+                DemandOrder.status == "pending_review",
+                DemandOrder.updated_at < hours_24,
+            )
+        ),
+        "opportunities_without_claim_48h": await _count(
+            select(func.count()).select_from(DemandOrder).where(
+                DemandOrder.status == "opportunity_pool",
+                DemandOrder.updated_at < hours_48,
+                ~claim_exists,
+            )
+        ),
+        "claimed_without_fde_3d": await _count(
+            select(func.count()).select_from(DemandOrder).where(
+                DemandOrder.status == "claimed",
+                DemandOrder.assigned_fde_user_id.is_(None),
+                DemandOrder.updated_at < days_3,
+            )
+        ),
+        "quoted_unconfirmed_48h": await _count(
+            select(func.count()).select_from(DemandOrder).where(
+                DemandOrder.status == "quoted",
+                DemandOrder.updated_at < hours_48,
+            )
+        ),
+        "accepted_unsettled_24h": await _count(
+            select(func.count()).select_from(DemandOrder).where(
+                DemandOrder.status == "accepted",
+                DemandOrder.updated_at < hours_24,
+            )
+        ),
+    }
+
     return ApiResponse(
         data=DashboardOut(
             pending_tutorials=pending_tutorials,
@@ -91,5 +173,9 @@ async def get_dashboard(session: SessionDep, _: AdminDep):
                 "zero_answer_questions": zero_answer_questions,
                 "overdue_missions": overdue_missions,
             },
+            order_pipeline=order_pipeline,
+            platform_actions=platform_actions,
+            supply_readiness=supply_readiness,
+            fulfillment_alerts=fulfillment_alerts,
         )
     )

@@ -18,7 +18,6 @@ import type {
   UserProfileOut,
 } from "@/lib/types";
 import LevelBadge from "@/components/LevelBadge";
-import EmptyState from "@/components/EmptyState";
 import Badge3D from "@/components/3d/Badge3D";
 
 // 成就 code → 3D 徽章模型。Desktop 的 10 个 Tripo GLB 按目录顺序命名（1~10），
@@ -313,12 +312,13 @@ export default function InfoPanel({
         </div>
 
         {recentItems.length === 0 ? (
-          <div className="card p-6">
-            <EmptyState
-              icon="🌊"
-              title="這片海域還沒有留下足跡"
-              description={`該騎士還沒有${tab === "answer" ? "已解決的回答" : tab === "tutorial" ? "教程" : "問題"}。`}
-            />
+          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="truncate text-sm font-medium text-slate-700">
+                暫無{tab === "answer" ? "已解決的回答" : tab === "tutorial" ? "教程" : "問題"}
+              </p>
+              <span className="shrink-0 text-xs text-slate-400">最近貢獻</span>
+            </div>
           </div>
         ) : (
           <ul className="card divide-y divide-slate-100">

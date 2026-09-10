@@ -9,7 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@bytemd/plugin-gfm": "^1.22.0",
+    "@bytemd/react": "^1.22.0",
     "@types/three": "^0.185.4",
+    "bytemd": "^1.22.0",
     "lucide-react": "^1.33.0",
     "meshoptimizer": "^1.1.1",
     "next": "14.2.15",

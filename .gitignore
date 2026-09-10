@@ -41,3 +41,7 @@ backup/
 # Local debug screenshots
 debug-header.png
 profile-gamification.png
+
+# Local browser/test artifacts
+web/.playwright-cli/
+web/output/

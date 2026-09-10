@@ -6,19 +6,12 @@ import {
   Award,
   BookOpen,
   CheckCircle2,
-  KeyRound,
   MessageSquare,
   Shield,
-  Trash2,
   UserCheck,
   UserX,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import {
-  getAdminUser,
-  resetAdminUserPassword,
-  updateAdminUser,
-} from "@/lib/admin-api";
+import { getAdminUser, updateAdminUser } from "@/lib/admin-api";
 import type { AdminUserDetail } from "@/lib/admin-api";
 import ConfirmDialog from "../../ConfirmDialog";
 
@@ -32,10 +25,7 @@ const LEVEL_LABELS: Record<number, string> = {
 
 type PendingAction =
   | { kind: "toggle_active" }
-  | { kind: "level"; value: number }
-  | { kind: "reputation"; value: number }
-  | { kind: "toggle_fde" }
-  | { kind: "reset_password" };
+  | { kind: "toggle_fde" };
 
 export default function AdminUserDetailPage() {
   const params = useParams();
@@ -48,7 +38,6 @@ export default function AdminUserDetailPage() {
   const [confirm, setConfirm] = useState<PendingAction | null>(null);
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [newPassword, setNewPassword] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,15 +62,8 @@ export default function AdminUserDetailPage() {
     try {
       if (confirm.kind === "toggle_active") {
         await updateAdminUser(user.id, { is_active: !user.is_active, reason });
-      } else if (confirm.kind === "level") {
-        await updateAdminUser(user.id, { level: confirm.value, reason });
-      } else if (confirm.kind === "reputation") {
-        await updateAdminUser(user.id, { reputation: confirm.value, reason });
       } else if (confirm.kind === "toggle_fde") {
         await updateAdminUser(user.id, { is_verified_fde: !user.is_verified_fde, reason });
-      } else if (confirm.kind === "reset_password") {
-        const data = await resetAdminUserPassword(user.id);
-        setNewPassword(data.new_password);
       }
       await load();
       setConfirm(null);
@@ -132,7 +114,7 @@ export default function AdminUserDetailPage() {
               )}
               {user.is_verified_fde && (
                 <span className="badge badge-amber">
-                  <UserCheck size={12} strokeWidth={2} /> 官方 FDE
+                  <UserCheck size={12} strokeWidth={2} /> 龍蝦騎士
                 </span>
               )}
             </div>
@@ -177,7 +159,10 @@ export default function AdminUserDetailPage() {
       {/* 操作 */}
       <div className="card p-6">
         <h2 className="text-sm font-semibold text-slate-800">管理操作</h2>
-        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <p className="mt-1 text-sm text-slate-500">
+          龍蝦騎士身份暫時由管理員人工配置。
+        </p>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             type="button"
             onClick={() => setConfirm({ kind: "toggle_active" })}
@@ -193,64 +178,16 @@ export default function AdminUserDetailPage() {
               </>
             )}
           </button>
-          {[2, 3, 4, 5].map((lv) => (
-            <button
-              key={lv}
-              type="button"
-              onClick={() => setConfirm({ kind: "level", value: lv })}
-              className="btn btn-secondary"
-            >
-              Lv{lv} {LEVEL_LABELS[lv]}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setConfirm({ kind: "reputation", value: 0 })}
-            className="btn btn-secondary"
-          >
-            <Award size={15} strokeWidth={2} /> 声望归零
-          </button>
           <button
             type="button"
             onClick={() => setConfirm({ kind: "toggle_fde" })}
             className="btn btn-secondary"
           >
             <UserCheck size={15} strokeWidth={2} />
-            {user.is_verified_fde ? "取消 FDE 认证" : "标记 FDE"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirm({ kind: "reset_password" })}
-            className="btn btn-secondary"
-          >
-            <KeyRound size={15} strokeWidth={2} /> 重置密码
+            {user.is_verified_fde ? "取消龍蝦騎士" : "標記龍蝦騎士"}
           </button>
         </div>
       </div>
-
-      {/* 重置密码结果 */}
-      {newPassword && (
-        <div className="card border-amber-200 bg-amber-50/50 p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-amber-800">新密码已生成</h3>
-              <p className="mt-1 text-sm text-amber-700">
-                请立即复制保存，此密码仅显示一次：
-              </p>
-              <code className="mt-3 inline-block rounded-lg bg-white px-4 py-2 font-mono text-base text-slate-900 ring-1 ring-amber-200">
-                {newPassword}
-              </code>
-            </div>
-            <button
-              type="button"
-              onClick={() => setNewPassword(null)}
-              className="btn btn-secondary btn-sm"
-            >
-              关闭
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* 确认弹窗 */}
       <ConfirmDialog
@@ -260,24 +197,20 @@ export default function AdminUserDetailPage() {
             ? user.is_active
               ? "停用该用户？"
               : "启用该用户？"
-            : confirm?.kind === "level"
-              ? `调整为 Lv${confirm.value} ${LEVEL_LABELS[confirm.value]}`
-              : confirm?.kind === "reputation"
-                ? "将声望归零？"
-                : confirm?.kind === "toggle_fde"
-                  ? user.is_verified_fde
-                    ? "取消官方 FDE 认证？"
-                    : "标记为官方认证 FDE？"
-                  : "重置该用户密码？"
+            : confirm?.kind === "toggle_fde"
+              ? user.is_verified_fde
+                ? "取消龍蝦騎士標記？"
+                : "標記為龍蝦騎士？"
+              : ""
         }
         description={
-          confirm?.kind === "reset_password"
-            ? "将生成随机新密码，旧密码立即失效。新密码仅显示一次。"
-            : "此操作会写入稽核日志。"
+          confirm?.kind === "toggle_fde"
+            ? "目前龍蝦騎士身份由管理員人工判斷與配置，此操作會寫入稽核日志。"
+            : "此操作會寫入稽核日志。"
         }
         confirmLabel="确认"
         loading={submitting}
-        reasonRequired={confirm?.kind !== "reset_password"}
+        reasonRequired
         reason={reason}
         onReasonChange={setReason}
         onConfirm={submitAction}

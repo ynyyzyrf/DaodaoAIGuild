@@ -6,19 +6,23 @@
 from app.api.routes.admin import (
     audit,
     auth,
+    companies,
     dashboard,
-    moderation,
     missions,
+    moderation,
+    orders,
     sensitive_words,
     users,
 )
 
 __all__ = [
     "auth",
+    "companies",
     "dashboard",
     "users",
     "moderation",
     "missions",
+    "orders",
     "sensitive_words",
     "audit",
 ]

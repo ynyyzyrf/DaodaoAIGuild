@@ -184,6 +184,10 @@ class DashboardOut(BaseModel):
     active_knights_7d: int
     trend: list[dict]  # [{date, questions, answers, tutorials}] 近 30 天
     alerts: dict  # {zero_answer_questions: n, overdue_missions: n}
+    order_pipeline: dict = {}
+    platform_actions: dict = {}
+    supply_readiness: dict = {}
+    fulfillment_alerts: dict = {}
 
 
 # ---------- 登录 ----------
