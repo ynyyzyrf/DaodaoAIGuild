@@ -58,6 +58,19 @@ class DemandOrderOut(BaseModel):
     updated_at: datetime
 
 
+class ExternalOrderCreateOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    enterprise_name: str
+    contact_name: str
+    contact_email: str
+    title: str
+    status: str
+    next_step: str = "platform_review"
+    created_at: datetime
+
+
 class OrderClaimCreate(BaseModel):
     company_id: int
     claim_note: str = ""
@@ -82,6 +95,10 @@ class OrderClaimOut(BaseModel):
 
 class AssignFde(BaseModel):
     fde_user_id: int
+
+
+class OrderWorkStatusUpdate(BaseModel):
+    status: str = Field(pattern="^(following|completed)$")
 
 
 class OrderQuoteCreate(BaseModel):

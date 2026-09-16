@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   BookOpen,
+  BriefcaseBusiness,
+  ChevronRight,
   CheckCircle2,
   Lock,
   MessageSquare,
@@ -38,8 +40,8 @@ const ACHIEVEMENT_BADGE_MODEL: Record<string, string> = {
 
 interface InfoPanelProps {
   user: UserProfileOut;
-  questions: QuestionOut[];
-  tutorials: TutorialOut[];
+  questions?: QuestionOut[];
+  tutorials?: TutorialOut[];
   isOwner: boolean;
   onSetTitle: (code: string) => void;
   busy: string | null;
@@ -72,8 +74,6 @@ type RecentTab = "answer" | "tutorial" | "question";
 
 export default function InfoPanel({
   user,
-  questions,
-  tutorials,
   isOwner,
   onSetTitle,
   busy,
@@ -82,24 +82,13 @@ export default function InfoPanel({
   unlockBanner,
   onDismissBanner,
 }: InfoPanelProps) {
-  const [tab, setTab] = useState<RecentTab>("answer");
-
   const stats: Array<{ label: string; value: number; icon: React.ReactNode }> = [
     { label: "發布問題", value: user.questions_count, icon: <MessageSquareText size={14} strokeWidth={2} /> },
     { label: "回答", value: user.answers_count, icon: <MessageSquare size={14} strokeWidth={2} /> },
     { label: "教程", value: user.tutorials_count, icon: <BookOpen size={14} strokeWidth={2} /> },
     { label: "被採納", value: user.accepted_count, icon: <CheckCircle2 size={14} strokeWidth={2} /> },
+    { label: "完成訂單", value: user.completed_orders_count, icon: <BriefcaseBusiness size={14} strokeWidth={2} /> },
   ];
-
-  // 最近贡献 tab 数据(本 MVP:用 questions/tutorials 凑)
-  const recentItems = (() => {
-    if (tab === "question") return questions.map((q) => ({ kind: "question" as const, id: q.id, title: q.title, meta: `${q.answer_count} 回答 · ${q.vote_count} 赞`, href: `/questions/${q.id}` }));
-    if (tab === "tutorial") return tutorials.map((t) => ({ kind: "tutorial" as const, id: t.id, title: t.title, meta: `${t.like_count} 赞 · ${t.category}`, href: `/tutorials/${t.slug}` }));
-    // answer tab:用 questions 里 status=resolved 的当占位
-    return questions
-      .filter((q) => q.status === "resolved")
-      .map((q) => ({ kind: "answer" as const, id: q.id, title: q.title, meta: "已解决", href: `/questions/${q.id}` }));
-  })();
 
   // 成就目錄：已解鎖優先，再補未解鎖；全部展示
   const achievementList = (() => {
@@ -112,7 +101,7 @@ export default function InfoPanel({
   const totalCount = user.achievements.length;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {/* 解锁提示条(仅本人) */}
       {isOwner && unlockBanner && unlockBanner.length > 0 && (
         <div className="card flex items-start gap-3 border-amber-200 bg-gradient-to-r from-amber-50 to-brand-50 p-4">
@@ -144,53 +133,59 @@ export default function InfoPanel({
       )}
 
       {/* ── 大型個人總覽卡：身份 + 核心數據 + 專業領域 + 成就摘要 ── */}
-      <section className="card p-7">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
         {/* 1) 身份區 */}
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
-          <h1 className="text-[28px] font-bold leading-tight text-slate-900">
-            {user.display_name || user.username}
-          </h1>
-          <span className="text-sm text-slate-500">@{user.username}</span>
-          <LevelBadge level={user.level} />
-          {user.current_title && (
-            <span className="badge whitespace-nowrap bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200">
-              {user.current_title.icon} {user.current_title.name}
-            </span>
-          )}
-        </div>
-        <p className="mt-1.5 text-sm text-slate-500">
-          {user.reputation} 聲望 · {isOwner ? "本人" : "訪客"} · {unlockedTitles.length} 個稱號
-        </p>
+        <div className="border-b border-slate-100 bg-white px-6 py-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
+                <h1 className="text-[28px] font-bold leading-tight text-slate-900">
+                  {user.display_name || user.username}
+                </h1>
+                <span className="text-sm text-slate-500">@{user.username}</span>
+                <LevelBadge level={user.level} />
+                {user.current_title && (
+                  <span className="badge whitespace-nowrap bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200">
+                    {user.current_title.icon} {user.current_title.name}
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 text-sm text-slate-500">
+                {user.reputation} 聲望 · {isOwner ? "本人" : "訪客"} · {unlockedTitles.length} 個稱號
+              </p>
+            </div>
 
-        {isOwner && unlockedTitles.length > 0 && (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <label htmlFor="title-select" className="text-xs font-medium text-slate-500">
-              顯示稱號
-            </label>
-            <select
-              id="title-select"
-              value={currentTitleCode ?? ""}
-              disabled={busy === "title"}
-              onChange={(e) => onSetTitle(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:opacity-50"
-            >
-              {unlockedTitles.map((t) => (
-                <option key={t.code} value={t.code}>
-                  {t.icon} {t.name}
-                </option>
-              ))}
-            </select>
+            {isOwner && unlockedTitles.length > 0 && (
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <label htmlFor="title-select" className="text-xs font-medium text-slate-500">
+                  顯示稱號
+                </label>
+                <select
+                  id="title-select"
+                  value={currentTitleCode ?? ""}
+                  disabled={busy === "title"}
+                  onChange={(e) => onSetTitle(e.target.value)}
+                  className="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-700 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:opacity-50"
+                >
+                  {unlockedTitles.map((t) => (
+                    <option key={t.code} value={t.code}>
+                      {t.icon} {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* 2) 核心數據：四等分 grid，數字比 label 更突出 */}
-        <div className="mt-6 border-t border-slate-100 pt-5">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        {/* 2) 核心數據：數字比 label 更突出 */}
+        <div className="px-6 py-5">
+          <h2 className="text-xs font-semibold text-slate-400">
             核心數據
           </h2>
-          <ul className="mt-3 grid grid-cols-4 gap-3">
+          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
             {stats.map((s) => (
-              <li key={s.label} className="text-center">
+              <li key={s.label} className="rounded-xl bg-slate-50 px-3 py-3 text-center ring-1 ring-inset ring-slate-100">
                 <span className="block text-2xl font-bold leading-none text-slate-900">
                   {s.value}
                 </span>
@@ -201,8 +196,8 @@ export default function InfoPanel({
         </div>
 
         {/* 3) 專業領域：輕量 pill，支援換行 */}
-        <div className="mt-6 border-t border-slate-100 pt-5">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <div className="border-t border-slate-100 px-6 py-5">
+          <h2 className="text-xs font-semibold text-slate-400">
             專業領域
           </h2>
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -218,9 +213,9 @@ export default function InfoPanel({
         </div>
 
         {/* 4) 成就徽章：全量展示，unlocked 優先，locked 補位 */}
-        <div className="mt-6 border-t border-slate-100 pt-5">
+        <div className="border-t border-slate-100 px-6 py-5">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <h2 className="text-xs font-semibold text-slate-400">
               成就徽章
               <span className="ml-1.5 text-[11px] font-normal text-slate-400">
                 {unlockedCount}/{totalCount}
@@ -228,7 +223,7 @@ export default function InfoPanel({
             </h2>
             <span className="text-[11px] text-slate-400">已解鎖優先展示</span>
           </div>
-          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
             {achievementList.length === 0 ? (
               <li className="col-span-full py-3 text-center text-xs text-slate-400">
                 暫無成就數據
@@ -289,53 +284,73 @@ export default function InfoPanel({
         </div>
       </section>
 
-      {/* ── 最近貢獻（保留原有 feed + tab） ── */}
-      <section>
-        <div className="mb-2.5 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-slate-500">最近貢獻</h2>
-          <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-xs">
-            {(["answer", "tutorial", "question"] as RecentTab[]).map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setTab(k)}
-                className={`rounded-md px-2.5 py-1 font-medium transition ${
-                  tab === k
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                {k === "answer" ? "回答" : k === "tutorial" ? "教程" : "問題"}
-              </button>
-            ))}
+    </div>
+  );
+}
+
+export function RecentContributions({
+  questions,
+  tutorials,
+}: {
+  questions: QuestionOut[];
+  tutorials: TutorialOut[];
+}) {
+  const [tab, setTab] = useState<RecentTab>("answer");
+
+  const recentItems = (() => {
+    if (tab === "question") return questions.map((q) => ({ kind: "question" as const, id: q.id, title: q.title, meta: `${q.answer_count} 回答 · ${q.vote_count} 赞`, href: `/questions/${q.id}` }));
+    if (tab === "tutorial") return tutorials.map((t) => ({ kind: "tutorial" as const, id: t.id, title: t.title, meta: `${t.like_count} 赞 · ${t.category}`, href: `/tutorials/${t.slug}` }));
+    return questions
+      .filter((q) => q.status === "resolved")
+      .map((q) => ({ kind: "answer" as const, id: q.id, title: q.title, meta: "已解决", href: `/questions/${q.id}` }));
+  })();
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-bold text-slate-900">最近貢獻</h2>
+        <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-xs">
+          {(["answer", "tutorial", "question"] as RecentTab[]).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setTab(k)}
+              className={`rounded-md px-2.5 py-1 font-medium transition ${
+                tab === k
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {k === "answer" ? "回答" : k === "tutorial" ? "教程" : "問題"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {recentItems.length === 0 ? (
+        <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="truncate text-sm font-medium text-slate-700">
+              暫無{tab === "answer" ? "已解決的回答" : tab === "tutorial" ? "教程" : "問題"}
+            </p>
+            <ChevronRight size={16} strokeWidth={2.4} className="shrink-0 text-slate-300" />
           </div>
         </div>
-
-        {recentItems.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="truncate text-sm font-medium text-slate-700">
-                暫無{tab === "answer" ? "已解決的回答" : tab === "tutorial" ? "教程" : "問題"}
-              </p>
-              <span className="shrink-0 text-xs text-slate-400">最近貢獻</span>
-            </div>
-          </div>
-        ) : (
-          <ul className="card divide-y divide-slate-100">
-            {recentItems.slice(0, 6).map((it) => (
-              <li key={`${it.kind}-${it.id}`}>
-                <Link href={it.href} className="card-hover flex items-center justify-between gap-3 px-4 py-3">
-                  <span className="truncate text-sm font-medium text-slate-800">{it.title}</span>
-                  <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-slate-500">
-                    {it.kind === "tutorial" && <ThumbsUp size={11} strokeWidth={2} />}
-                    {it.meta}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
+      ) : (
+        <ul className="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-100">
+          {recentItems.slice(0, 6).map((it) => (
+            <li key={`${it.kind}-${it.id}`}>
+              <Link href={it.href} className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-slate-50">
+                <span className="truncate text-sm font-medium text-slate-800">{it.title}</span>
+                <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-slate-500">
+                  {it.kind === "tutorial" && <ThumbsUp size={11} strokeWidth={2} />}
+                  {it.meta}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

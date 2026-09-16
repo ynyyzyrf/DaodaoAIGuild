@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.answer import Answer
+from app.models.order import DemandOrder
 from app.models.question import Question
 from app.models.tutorial import Tutorial
 from app.models.user import User
@@ -114,11 +115,18 @@ class UserRepository:
                 Answer.author_id == user_id, Answer.is_accepted.is_(True)
             )
         )
+        completed_orders_count = await _count(
+            select(func.count()).select_from(DemandOrder).where(
+                DemandOrder.assigned_fde_user_id == user_id,
+                DemandOrder.status.in_(["accepted", "settled", "rated"]),
+            )
+        )
         return {
             "questions_count": questions_count,
             "answers_count": answers_count,
             "tutorials_count": tutorials_count,
             "accepted_count": accepted_count,
+            "completed_orders_count": completed_orders_count,
         }
 
     async def list_content_ids(self, user_id: int) -> dict[str, list[int]]:

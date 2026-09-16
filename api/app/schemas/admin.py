@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import Paginated
 
-
 # ---------- 稽核日志 ----------
 
 
@@ -139,6 +138,11 @@ class ModerationDetailOut(BaseModel):
     target_id: int
     title: str
     content: str  # Markdown 原文
+    video_url: str | None = None
+    video_provider: str | None = None
+    video_embed_url: str | None = None
+    video_title: str | None = None
+    video_thumbnail_url: str | None = None
     author_id: int
     author_name: str
     status: str

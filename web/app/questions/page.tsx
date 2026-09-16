@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Filter, MessageSquare, Plus, Tag as TagIcon } from "lucide-react";
-import { listQuestions, listTags } from "@/lib/api";
-import type { QuestionOut, TagOut } from "@/lib/types";
+import { ArrowRight, CheckCircle2, MessageCircle, Plus, Search, Tag as TagIcon } from "lucide-react";
+
 import Avatar from "@/components/Avatar";
+import { ChannelHero, ChannelSearch, ChannelToolbar } from "@/components/ChannelShell";
 import EmptyState from "@/components/EmptyState";
-import PageHero from "@/components/PageHero";
-import SidebarNav from "@/components/SidebarNav";
+import { listQuestions, listTags } from "@/lib/api";
+import { timeAgo } from "@/lib/time";
+import type { QuestionOut, TagOut } from "@/lib/types";
 
 type SortKey = "latest" | "hot" | "open";
 
@@ -17,6 +18,33 @@ const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
   { key: "hot", label: "熱門" },
   { key: "open", label: "待解決" },
 ];
+
+function formatCount(value: number) {
+  return new Intl.NumberFormat("zh-Hant").format(value);
+}
+
+function questionStatus(q: QuestionOut) {
+  if (q.status === "resolved") return { label: "已解決", dot: "bg-emerald-500", text: "text-emerald-700" };
+  return { label: "待解決", dot: "bg-amber-500", text: "text-slate-500" };
+}
+
+function participantKey(q: QuestionOut, index: number) {
+  return `${q.id}-participant-${index}`;
+}
+
+function questionParticipants(q: QuestionOut) {
+  const rows = [
+    { user: q.author, isAnon: q.is_anonymous },
+    ...q.answers.map((answer) => ({ user: answer.author, isAnon: false })),
+  ];
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const key = row.isAnon ? `anon-${q.id}` : row.user?.username || row.user?.display_name || "";
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 5);
+}
 
 export default function QuestionsPage() {
   const [questions, setQuestions] = useState<QuestionOut[]>([]);
@@ -33,11 +61,21 @@ export default function QuestionsPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     listQuestions(activeTag ? { tag: activeTag } : {})
-      .then((p) => setQuestions(p.items))
-      .catch(() => setQuestions([]))
-      .finally(() => setLoading(false));
+      .then((p) => {
+        if (!cancelled) setQuestions(p.items);
+      })
+      .catch(() => {
+        if (!cancelled) setQuestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [activeTag]);
 
   const filtered = useMemo(() => {
@@ -51,7 +89,6 @@ export default function QuestionsPage() {
           q.tags.some((t) => t.toLowerCase().includes(kw)),
       );
     }
-    // 排序：「待解決」獨立過濾；「最新 / 熱門」都基於現有結果
     if (sort === "open") {
       list = list.filter((q) => q.status !== "resolved");
     } else if (sort === "hot") {
@@ -62,32 +99,44 @@ export default function QuestionsPage() {
     return list;
   }, [questions, keyword, sort]);
 
-  const hotTags = tags.slice(0, 4).map((t) => t.name);
+  const metrics = [
+    { label: "問題數", value: formatCount(questions.length), icon: MessageCircle },
+    { label: "已解決", value: formatCount(questions.filter((q) => q.status === "resolved").length), icon: CheckCircle2 },
+    { label: "回答數", value: formatCount(questions.reduce((sum, q) => sum + q.answer_count, 0)), icon: ArrowRight },
+    { label: "標籤數", value: formatCount(tags.length), icon: TagIcon },
+  ];
 
   return (
-    <div className="mx-auto flex max-w-[1500px] gap-8 px-4 py-8 sm:px-6 lg:px-10">
-      <SidebarNav />
-      <main className="min-w-0 flex-1">
-        {/* Page Hero */}
-        <PageHero
-          variant="warm"
-          eyebrow="社區板塊 · COMMUNITY"
-          title="問題廣場"
-          description="提出 AI 落地中的具體場景，讓 FDE、AI 工程師一起幫你想清楚。"
-          primaryCta={{ label: "＋ 提個問題", href: "/questions/new" }}
-          search={{
-            placeholder: "搜索問題標題、描述或標籤...",
-            value: keyword,
-            onChange: setKeyword,
-          }}
-          hotTags={hotTags}
+    <main className="bg-[#f6f8fb] pb-16">
+      <ChannelHero
+        title="問題廣場"
+        subtitle="把 AI 落地中的具體問題沉澱成可討論、可回答、可追蹤的知識。"
+        image="/banners/banner-3.png?v=20260828"
+        metrics={metrics}
+        note={
+          <>
+            <p className="text-sm font-black text-[#35120d]">社區問答，不混成正式需求。</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">這裡沉澱問題和解法；正式商機仍然進機會池。</p>
+            <Link href="/questions/new" className="btn btn-primary mt-4 h-10">
+              <Plus size={15} strokeWidth={2.5} />
+              提個問題
+            </Link>
+          </>
+        }
+      >
+        <ChannelSearch
+          icon={Search}
+          value={keyword}
+          onChange={setKeyword}
+          placeholder="搜索問題標題、描述或標籤..."
         />
+      </ChannelHero>
 
-        {/* 篩選 / 排序 Bar */}
-        <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-baseline gap-2">
-            <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">全部問題</h2>
-            <span className="text-sm text-slate-400">· {filtered.length}</span>
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
+        <ChannelToolbar>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-black text-slate-950">全部問題</h2>
+            <span className="text-sm font-medium text-slate-400">{formatCount(filtered.length)} 個結果</span>
             {activeTag && (
               <button
                 type="button"
@@ -95,54 +144,46 @@ export default function QuestionsPage() {
                 className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 transition-colors hover:bg-brand-100"
               >
                 <TagIcon size={11} strokeWidth={2} />
-                {activeTag} ✕
+                {activeTag} X
               </button>
             )}
+            {tags.length > 0 && (
+              <div className="ml-0 flex flex-wrap gap-1.5 lg:ml-3">
+                <button onClick={() => setActiveTag("")} className={`chip ${activeTag === "" ? "chip-active" : "chip-idle"}`}>
+                  全部
+                </button>
+                {tags.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveTag(t.slug)}
+                    className={`chip ${activeTag === t.slug ? "chip-active" : "chip-idle"}`}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {SORT_OPTIONS.map((o) => (
               <button
                 key={o.key}
                 type="button"
                 onClick={() => setSort(o.key)}
-                className={`chip ${sort === o.key ? "chip-active" : "chip-idle"}`}
+                className={`inline-flex h-10 items-center rounded-lg border px-4 text-sm font-semibold shadow-sm transition-colors ${
+                  sort === o.key
+                    ? "border-brand-200 bg-brand-50 text-brand-700"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-brand-200 hover:text-brand-600"
+                }`}
               >
                 {o.label}
               </button>
             ))}
           </div>
-        </div>
+        </ChannelToolbar>
 
-        {/* 標籤篩選 */}
-        {tags.length > 0 && (
-          <div className="mt-4 flex items-start gap-3 overflow-x-auto pb-1">
-            <span className="inline-flex shrink-0 items-center gap-1.5 pt-1.5 text-xs font-medium text-slate-500">
-              <Filter size={12} strokeWidth={2} />
-              標籤
-            </span>
-            <div className="flex shrink-0 flex-wrap gap-1.5">
-              <button
-                onClick={() => setActiveTag("")}
-                className={`chip ${activeTag === "" ? "chip-active" : "chip-idle"}`}
-              >
-                全部
-              </button>
-              {tags.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveTag(t.slug)}
-                  className={`chip ${activeTag === t.slug ? "chip-active" : "chip-idle"}`}
-                >
-                  {t.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 列表 */}
         {loading ? (
-          <p className="mt-12 text-sm text-slate-500">加載中...</p>
+          <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">同步最新問題...</div>
         ) : filtered.length === 0 ? (
           <div className="mt-10">
             <EmptyState
@@ -150,7 +191,7 @@ export default function QuestionsPage() {
               description={
                 keyword || activeTag
                   ? "換個關鍵詞或標籤試試。"
-                  : "遇到 AI 落地的坑？來提第一個問題，召喚騎士。"
+                  : "遇到 AI 落地的坑？來提第一個問題。"
               }
               action={
                 !keyword && !activeTag ? (
@@ -163,69 +204,85 @@ export default function QuestionsPage() {
             />
           </div>
         ) : (
-          <ul className="mt-8 space-y-4">
-            {filtered.map((q) => (
-              <li key={q.id}>
-                <Link
-                  href={`/questions/${q.id}`}
-                  className="card card-hover group flex gap-5 p-6"
-                >
-                  {/* 左側統計：回答數 */}
-                  <div className="hidden min-w-[72px] shrink-0 flex-col items-center justify-center gap-1 self-stretch rounded-xl bg-slate-50 px-4 py-4 text-center sm:flex">
-                    <span className="text-2xl font-extrabold leading-none text-slate-900">
-                      {q.answer_count}
-                    </span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                      回答
-                    </span>
-                  </div>
-
-                  {/* 主內容 */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="line-clamp-2 text-[17px] font-bold text-slate-900 transition-colors group-hover:text-brand-600 sm:text-lg">
+          <ul className="question-row-list overflow-hidden rounded-xl border border-slate-200 bg-white">
+            {filtered.map((q) => {
+              const status = questionStatus(q);
+              const participants = questionParticipants(q);
+              const primaryTag = q.tags[0] ?? "Daostore";
+              const authorName = q.is_anonymous
+                ? "匿名龍蝦騎士"
+                : q.author?.display_name || q.author?.username || "未知";
+              return (
+                <li key={q.id} className="border-b border-slate-100 last:border-b-0">
+                  <Link
+                    href={`/questions/${q.id}`}
+                    className="group grid min-h-[92px] gap-4 px-5 py-4 transition-colors hover:bg-brand-50/35 md:grid-cols-[minmax(0,1fr)_132px_270px_86px] md:items-center"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <h3 className="line-clamp-2 text-[20px] font-semibold leading-snug text-slate-950 transition-colors group-hover:text-brand-600">
                         {q.title}
                       </h3>
-                      {q.status === "resolved" && (
-                        <span className="badge badge-green shrink-0">✓ 已解決</span>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-400">
+                        <span>互動交流</span>
+                        <span className="text-slate-300">·</span>
+                        <span>#{primaryTag}</span>
+                        <span className="text-slate-300">·</span>
+                        <span>{authorName}</span>
+                        <span className="text-slate-300">·</span>
+                        <span>{timeAgo(q.created_at)}</span>
+                      </div>
+                      {q.tags.length > 1 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {q.tags.slice(1, 4).map((t) => (
+                            <span key={t} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                              #{t}
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </div>
-                    {q.description && (
-                      <p className="mt-2 line-clamp-2 text-[15px] leading-relaxed text-slate-600">
-                        {q.description}
-                      </p>
-                    )}
-                    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
-                      <span className="inline-flex items-center gap-1.5">
-                        <Avatar user={q.author} isAnon={q.is_anonymous} size={20} />
-                        <span className="font-medium text-slate-700">
-                          {q.author?.display_name ?? "未知"}
-                        </span>
-                        {q.is_anonymous && <span className="badge badge-red">🦞 匿名</span>}
-                      </span>
-                      <span className="inline-flex items-center gap-1 sm:hidden">
-                        <MessageSquare size={12} strokeWidth={2} />
-                        {q.answer_count} 回答
-                      </span>
-                      <span className="text-slate-500">{q.view_count} 瀏覽</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {q.tags.map((t) => (
-                          <span
-                            key={t}
-                            className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-600"
-                          >
-                            #{t}
-                          </span>
+
+                    <div className="flex items-center md:justify-center">
+                      <div className="flex -space-x-2">
+                        {participants.map((participant, index) => (
+                          <Avatar
+                            key={participantKey(q, index)}
+                            user={participant.user}
+                            isAnon={participant.isAnon}
+                            size={30}
+                            className="border-2 border-white shadow-sm"
+                          />
                         ))}
                       </div>
+                      {participants.length === 0 && <span className="text-xs text-slate-400">暫無參與</span>}
                     </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
+
+                    <div className="grid grid-cols-3 gap-3 text-sm md:text-right">
+                      <div>
+                        <div className="font-semibold text-slate-900">{formatCount(q.answer_count)}</div>
+                        <div className="mt-0.5 text-xs text-slate-400">回答</div>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-900">{formatCount(q.view_count)}</div>
+                        <div className="mt-0.5 text-xs text-slate-400">瀏覽</div>
+                      </div>
+                      <div>
+                        <div className="font-medium text-slate-500">{timeAgo(q.updated_at)}</div>
+                        <div className="mt-0.5 text-xs text-slate-400">更新</div>
+                      </div>
+                    </div>
+
+                    <div className={`flex items-center gap-2 text-xs font-semibold ${status.text} md:justify-end`}>
+                      <span className={`h-2 w-2 rounded-full ${status.dot}`} />
+                      <span>{status.label}</span>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
-      </main>
-    </div>
+      </section>
+    </main>
   );
 }

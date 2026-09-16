@@ -19,7 +19,7 @@ async function readApiBody(res: Response, fallback: string) {
 function LoginForm() {
   const router = useRouter();
   useSearchParams();
-  const next = "/orders/new";
+  const next = "/fde";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

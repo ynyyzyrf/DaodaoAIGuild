@@ -48,6 +48,7 @@ class UserProfileOut(UserOut):
     answers_count: int = 0
     tutorials_count: int = 0
     accepted_count: int = 0
+    completed_orders_count: int = 0
     # 遊戲化身份层
     exp: int = 0
     current_title: TitleOut | None = None

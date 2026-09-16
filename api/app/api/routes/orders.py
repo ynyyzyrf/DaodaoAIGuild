@@ -13,6 +13,7 @@ from app.schemas.order import (
     OrderQuoteCreate,
     OrderQuoteOut,
     OrderReviewCreate,
+    OrderWorkStatusUpdate,
 )
 from app.services.order import OrderService
 
@@ -81,6 +82,18 @@ async def accept_delivery(
 ):
     service = OrderService(session)
     order = await service.accept_delivery(order_id, current_user, payload.acceptance_note)
+    return ApiResponse(data=await service.to_order_out(order))
+
+
+@router.post("/{order_id}/work-status", response_model=ApiResponse[DemandOrderOut])
+async def update_work_status(
+    order_id: int,
+    payload: OrderWorkStatusUpdate,
+    session: SessionDep,
+    current_user: CurrentUserDep,
+):
+    service = OrderService(session)
+    order = await service.update_work_status(order_id, current_user, payload.status)
     return ApiResponse(data=await service.to_order_out(order))
 
 

@@ -6,7 +6,7 @@
 """
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ApiError
@@ -95,7 +95,9 @@ class ModerationService:
                         "target_id": q.id,
                         "title": q.title,
                         "author_id": q.author_id,
-                        "author_name": q_authors.get(q.author_id, "").display_name if q_authors.get(q.author_id) else "",
+                        "author_name": (
+                            q_authors.get(q.author_id, "").display_name if q_authors.get(q.author_id) else ""
+                        ),
                         "status": q.status,
                         "trigger_reason": "report",
                         "created_at": q.created_at,
@@ -121,7 +123,9 @@ class ModerationService:
                         "target_id": a.id,
                         "title": a.content[:80],
                         "author_id": a.author_id,
-                        "author_name": a_authors.get(a.author_id, "").display_name if a_authors.get(a.author_id) else "",
+                        "author_name": (
+                            a_authors.get(a.author_id, "").display_name if a_authors.get(a.author_id) else ""
+                        ),
                         "status": "open",
                         "trigger_reason": "report",
                         "created_at": a.created_at,
@@ -151,6 +155,11 @@ class ModerationService:
                 "target_id": t.id,
                 "title": t.title,
                 "content": t.content,
+                "video_url": t.video_url,
+                "video_provider": t.video_provider,
+                "video_embed_url": t.video_embed_url,
+                "video_title": t.video_title,
+                "video_thumbnail_url": t.video_thumbnail_url,
                 "author_id": t.author_id,
                 "author_name": author.display_name if author else "",
                 "status": t.status,

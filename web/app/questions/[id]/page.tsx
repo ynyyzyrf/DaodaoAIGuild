@@ -204,7 +204,7 @@ export default function QuestionDetailPage() {
               >
                 <div className="flex items-center gap-2 text-sm">
                   <Avatar user={a.author} size={24} />
-                  <span className="font-medium text-slate-700">{a.author?.username ?? "未知"}</span>
+                  <span className="font-medium text-slate-700">{a.author?.display_name || a.author?.username || "未知"}</span>
                   {a.is_accepted && (
                     <span className="badge badge-green">
                       <CheckCircle2 size={13} strokeWidth={2} />

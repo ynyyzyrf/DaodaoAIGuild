@@ -6,6 +6,7 @@ from app.models.attachment import Attachment
 from app.models.company import Company, CompanyJoinRequest, CompanyMember
 from app.models.device_code import DeviceCode
 from app.models.favorite import Favorite
+from app.models.external_api import ExternalApiKey, ExternalApiLog
 from app.models.gamification import UserAchievement, UserEquipment, UserTitle
 from app.models.mission import Mission
 from app.models.order import (
@@ -17,10 +18,12 @@ from app.models.order import (
     OrderQuote,
     OrderReview,
 )
+from app.models.platform_setting import PlatformSetting
 from app.models.question import Question
 from app.models.room import Room
 from app.models.room_member import RoomMember
 from app.models.room_message import RoomMessage
+from app.models.solution import EnterpriseSolution
 from app.models.tag import Tag, Taggable
 from app.models.tutorial import Tutorial
 from app.models.user import User
@@ -34,6 +37,8 @@ __all__ = [
     "Taggable",
     "Vote",
     "Favorite",
+    "ExternalApiKey",
+    "ExternalApiLog",
     "Tutorial",
     "Attachment",
     "Company",
@@ -53,10 +58,12 @@ __all__ = [
     "OrderDelivery",
     "OrderReview",
     "FdeProjectRecord",
+    "PlatformSetting",
     "Agent",
     "AgentCredential",
     "DeviceCode",
     "Room",
     "RoomMember",
     "RoomMessage",
+    "EnterpriseSolution",
 ]

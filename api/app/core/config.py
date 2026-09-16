@@ -61,6 +61,16 @@ class Settings(BaseSettings):
     pm_desktop_api_key: str = ""
     pm_desktop_request_timeout_seconds: int = 10
 
+    # Dify：首頁需求對話。API key 僅由部署環境或本地 .env 注入，禁止下發到前端。
+    dify_chat_api_base: str = "https://ai-dashboard.solarifyai.com/v1"
+    dify_chat_api_key: str = ""
+    # Dify：首頁聊天前置意圖識別 Workflow。返回 submit_requirement 時由前端打開需求確認表單。
+    dify_requirement_intent_api_key: str = ""
+    dify_chat_request_timeout_seconds: int = 45
+
+    # Dify：問題廣場回答小助手。必須使用專用 App API Key，避免打到首頁聊天 App。
+    dify_question_assistant_api_key: str = ""
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.cors_origins_env.split(",") if o.strip()]

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, CalendarClock, ClipboardList, Clock3, Coins, Handshake, Plus, SearchCheck } from "lucide-react";
+import { ArrowRight, CalendarClock, ClipboardList, Clock3, Coins, Handshake, SearchCheck } from "lucide-react";
 
 import { listMyOrders } from "@/lib/api";
 import type { DemandOrderOut } from "@/lib/types";
@@ -79,10 +79,6 @@ export default function OrdersPage() {
               從提交、審核、承接、報價到交付驗收，所有企業需求都在這裡看狀態和下一步。
             </p>
           </div>
-          <Link href="/orders/new" className="btn btn-primary h-11 px-5">
-            <Plus size={16} strokeWidth={2.5} />
-            提交需求
-          </Link>
         </div>
       </section>
 
@@ -128,16 +124,12 @@ export default function OrdersPage() {
                 <div className="rounded-lg border border-dashed border-slate-300 bg-white p-10">
                   <div className="mx-auto max-w-xl text-center">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-                      <Plus size={20} strokeWidth={2.4} />
+                      <ClipboardList size={20} strokeWidth={2.4} />
                     </div>
                     <h3 className="mt-4 text-lg font-bold text-slate-950">還沒有企業需求</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-500">
-                      先提交一個清楚的業務場景，平台審核後會進入機會池，讓合適的咨詢公司/FDE 來承接。
+                      企業需求進入流程後，會在這裡同步顯示審核、承接、報價和交付狀態。
                     </p>
-                    <Link href="/orders/new" className="btn btn-primary mt-5">
-                      <Plus size={16} strokeWidth={2.5} />
-                      提交第一個需求
-                    </Link>
                   </div>
                 </div>
               ) : (

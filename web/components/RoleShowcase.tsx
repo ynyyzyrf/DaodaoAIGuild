@@ -32,16 +32,16 @@ export default function RoleShowcase({ equipment, user }: RoleShowcaseProps) {
   return (
     <div
       data-role-showcase
-      className="role-showcase relative z-0 flex w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(16,24,40,0.04)]"
+      className="role-showcase relative z-0 flex w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.06)]"
     >
       {/* 3D 展示区:占满主区,固定高度 */}
       <div
         data-three-container
         className="three-container relative z-0 w-full"
         style={{
-          height: "clamp(520px, 70vh, 720px)",
+          height: "clamp(500px, calc(100vh - 210px), 680px)",
           background:
-            "radial-gradient(ellipse 80% 60% at 50% 65%, rgba(197,87,60,0.06) 0%, transparent 60%), #F7F5F1",
+            "radial-gradient(ellipse 72% 46% at 50% 68%, rgba(197,87,60,0.08) 0%, transparent 62%), linear-gradient(180deg, #FCFBF8 0%, #F5F1EA 100%)",
         }}
       >
         <LobsterKnight3D

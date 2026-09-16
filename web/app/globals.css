@@ -1,10 +1,36 @@
+@import "bytemd/dist/index.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ---- 可复用组件类（见 docs/UI-STYLE.md §7）---- */
 
 @layer components {
+  .brand-logo {
+    max-width: 56px !important;
+    max-height: 56px !important;
+  }
+  .brand-logo-img {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+  }
+
   .card {
     @apply rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-200;
   }

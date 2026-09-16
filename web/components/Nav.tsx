@@ -4,8 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  Building2,
-  ClipboardList,
   LogOut,
   Shield,
   User as UserIcon,
@@ -15,12 +13,19 @@ import type { CurrentUser } from "@/lib/auth";
 import Avatar from "@/components/Avatar";
 import BrandLogo from "@/components/BrandLogo";
 import LevelBadge from "@/components/LevelBadge";
-import QuickNav from "@/components/QuickNav";
 
 // 统一 Header 按钮基类：h-11 + inline-flex + items-center + justify-center
 // 保证文字 / icon 在所有按钮里都垂直居中（不依赖内部 span 包裹）
 const BTN_BASE =
   "inline-flex h-11 items-center justify-center gap-1.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap";
+
+const NAV_LINKS = [
+  { href: "/", label: "首頁" },
+  { href: "/fde", label: "企業方案" },
+  { href: "/opportunities", label: "機會池" },
+  { href: "/questions", label: "問題廣場" },
+  { href: "/tutorials", label: "學院" },
+];
 
 // ── 用户下拉 ───────────────────────────────────────────────────────
 
@@ -175,42 +180,37 @@ export default function Nav() {
       }`}
     >
       {/* 整條 Header 採用 w-full + justify-between；不再 max-width 居中 */}
-      <div className="flex h-[76px] w-full items-center justify-between px-4 sm:px-6 lg:px-10">
+      <div className="flex h-[64px] w-full items-center justify-between px-4 sm:px-6 lg:px-10">
         {/* ── Left Group：品牌 ── */}
         <div className="flex min-w-0 items-center gap-8">
           <Link href="/" className="inline-flex h-11 shrink-0 items-center gap-3">
             <BrandLogo />
-            <span className="text-xl font-extrabold tracking-tight text-slate-900">
-              Daostore <span className="text-brand-500">AI Guild</span>
+            <span className="text-lg font-black tracking-tight text-slate-950">
+              Daostore社區
             </span>
           </Link>
 
+          <nav className="hidden items-center gap-2 lg:flex" aria-label="主導航">
+            {NAV_LINKS.map((item) => {
+              const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`relative inline-flex h-[64px] items-center px-3 text-base font-black transition-colors ${
+                    active ? "text-brand-600" : "text-slate-600 hover:text-slate-950"
+                  }`}
+                >
+                  {item.label}
+                  {active && <span className="absolute inset-x-3 bottom-0 h-[3px] rounded-full bg-brand-500" />}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* ── Right Group：精簡常駐操作；站內入口收進 QuickNav ── */}
+        {/* ── Right Group：用戶入口 ── */}
         <div className="flex shrink-0 items-center gap-2">
-          {user && (
-            <div className="hidden items-center gap-1.5 md:flex">
-              <QuickNav />
-            </div>
-          )}
-
-          <Link
-            href={user ? "/companies/new" : "/login?next=%2Fcompanies%2Fnew"}
-            className={`${BTN_BASE} hidden border border-slate-200 px-4 text-slate-700 hover:bg-slate-50 sm:inline-flex`}
-          >
-            <Building2 size={15} strokeWidth={2.2} />
-            申請入駐
-          </Link>
-
-          <Link
-            href={user ? "/orders/new" : "/login?next=%2Forders%2Fnew"}
-            className={`${BTN_BASE} bg-brand-500 px-5 text-white hover:bg-brand-600`}
-          >
-            <ClipboardList size={15} strokeWidth={2.4} />
-            提交需求
-          </Link>
-
           {user ? (
             <UserMenu user={user} />
           ) : (

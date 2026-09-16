@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 import RequireAuth from "@/components/RequireAuth";
-import { getCompany, getOrder } from "@/lib/api";
+import { getCompany, getOrder, updateOrderWorkStatus } from "@/lib/api";
 import type { DemandOrderOut } from "@/lib/types";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -104,6 +104,12 @@ const STATUS_META: Record<string, { tone: string; stage: string; hint: string }>
   },
 };
 
+const COMPLETED_ORDER_STATUSES = new Set(["accepted", "settled", "rated"]);
+
+function orderWorkStatus(status: string): "following" | "completed" {
+  return COMPLETED_ORDER_STATUSES.has(status) ? "completed" : "following";
+}
+
 function formatDate(value: string | null) {
   if (!value) return "未設定";
   return new Intl.DateTimeFormat("zh-Hant", {
@@ -145,6 +151,8 @@ export default function OrderDetailPage() {
   const [claimedCompanyName, setClaimedCompanyName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [statusError, setStatusError] = useState("");
 
   useEffect(() => {
     if (!Number.isFinite(id)) {
@@ -188,6 +196,21 @@ export default function OrderDetailPage() {
         hint: "需求正在流程中。",
       }
     : null;
+  const workStatus = order ? orderWorkStatus(order.status) : "following";
+
+  async function handleWorkStatusChange(value: "following" | "completed") {
+    if (!order || value === workStatus || statusBusy) return;
+    setStatusBusy(true);
+    setStatusError("");
+    try {
+      const nextOrder = await updateOrderWorkStatus(order.id, value);
+      setOrder(nextOrder);
+    } catch (err) {
+      setStatusError(err instanceof Error ? err.message : "更新訂單狀態失敗");
+    } finally {
+      setStatusBusy(false);
+    }
+  }
 
   return (
     <RequireAuth>
@@ -297,6 +320,22 @@ export default function OrderDetailPage() {
                   <div className="flex items-center gap-2">
                     <CalendarClock size={16} strokeWidth={2} className="text-slate-400" />
                     <span>{formatDate(order.expected_delivery_at)}</span>
+                  </div>
+                  <div className="space-y-2 pt-2">
+                    <label htmlFor="order-work-status" className="block text-xs font-semibold text-slate-400">
+                      訂單狀態
+                    </label>
+                    <select
+                      id="order-work-status"
+                      value={workStatus}
+                      disabled={statusBusy}
+                      onChange={(event) => handleWorkStatusChange(event.target.value as "following" | "completed")}
+                      className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-brand-300 focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                    >
+                      <option value="following">跟進中</option>
+                      <option value="completed">已完成</option>
+                    </select>
+                    {statusError && <p className="text-xs leading-5 text-red-600">{statusError}</p>}
                   </div>
                 </div>
               </section>
