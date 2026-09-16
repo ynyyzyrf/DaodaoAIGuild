@@ -136,3 +136,46 @@ async def test_chat_parses_action_json_from_main_agent_answer(client, auth_heade
     assert data["requirement_draft"]["title"] == "交需求"
     assert data["requirement_draft"]["business_background"] == ""
     assert data["requirement_draft"]["deliverable_expectation"] == ""
+
+
+async def test_chat_falls_back_when_requirement_intent_key_is_not_workflow_app(client, auth_headers, monkeypatch):
+    import httpx
+
+    import app.api.routes.chat as chat_route
+
+    monkeypatch.setattr(chat_route.get_settings(), "dify_chat_api_key", "chat-key")
+    monkeypatch.setattr(chat_route.get_settings(), "dify_requirement_intent_api_key", "wrong-chat-app-key")
+
+    async def fake_call_dify_workflow(**kwargs):
+        request = httpx.Request("POST", "https://dify.example/v1/workflows/run")
+        response = httpx.Response(
+            400,
+            request=request,
+            json={
+                "code": "not_workflow_app",
+                "message": "Please check if your app mode matches the right API route.",
+                "status": 400,
+            },
+        )
+        raise httpx.HTTPStatusError("bad request", request=request, response=response)
+
+    async def fake_call_dify_chat_message(**kwargs):
+        return {
+            "answer": "你好，我可以幫你整理需求。",
+            "conversation_id": "conv_fallback",
+            "message_id": "msg_fallback",
+        }
+
+    monkeypatch.setattr(chat_route, "_call_dify_workflow", fake_call_dify_workflow)
+    monkeypatch.setattr(chat_route, "_call_dify_chat_message", fake_call_dify_chat_message)
+
+    resp = await client.post(
+        "/api/v1/chat/messages",
+        headers=auth_headers,
+        json={"query": "你好"},
+    )
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["answer"] == "你好，我可以幫你整理需求。"
+    assert data["conversation_id"] == "conv_fallback"

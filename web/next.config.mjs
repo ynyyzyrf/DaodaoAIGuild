@@ -9,6 +9,7 @@ const nextConfig = {
     const upstream = process.env.API_INTERNAL_URL || "http://localhost:8000";
     return [
       { source: "/api/v1/:path*", destination: `${upstream}/api/v1/:path*` },
+      { source: "/api/open/:path*", destination: `${upstream}/api/open/:path*` },
       { source: "/media/:path*", destination: `${upstream}/media/:path*` },
     ];
   },
