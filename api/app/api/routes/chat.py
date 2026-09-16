@@ -157,6 +157,8 @@ async def _detect_requirement_intent(
         )
     except httpx.HTTPStatusError as exc:
         detail = exc.response.text[:300] if exc.response is not None else ""
+        if _is_dify_not_workflow_app(detail):
+            return RequirementIntentResult()
         raise ApiError(code=50023, message=f"Dify 意图识别返回异常：{detail}", status_code=502) from exc
     except httpx.HTTPError as exc:
         raise ApiError(code=50024, message="Dify 意图识别服务暂时不可用", status_code=502) from exc
@@ -196,6 +198,14 @@ async def _call_dify_workflow(
     data = response.json()
     outputs = data.get("data", {}).get("outputs", data.get("outputs", {}))
     return outputs if isinstance(outputs, dict) else {}
+
+
+def _is_dify_not_workflow_app(detail: str) -> bool:
+    try:
+        parsed = json.loads(detail)
+    except json.JSONDecodeError:
+        return "not_workflow_app" in detail
+    return isinstance(parsed, dict) and parsed.get("code") == "not_workflow_app"
 
 
 def _pick_mapping(source: dict[str, Any], *keys: str) -> dict[str, Any]:
