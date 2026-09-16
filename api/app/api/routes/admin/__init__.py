@@ -11,7 +11,9 @@ from app.api.routes.admin import (
     missions,
     moderation,
     orders,
+    settings,
     sensitive_words,
+    solutions,
     users,
 )
 
@@ -23,6 +25,8 @@ __all__ = [
     "moderation",
     "missions",
     "orders",
+    "settings",
+    "solutions",
     "sensitive_words",
     "audit",
 ]

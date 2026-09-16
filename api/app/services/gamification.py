@@ -48,6 +48,7 @@ class UserStats:
     answers_count: int = 0
     accepted_count: int = 0
     tutorials_count: int = 0
+    completed_orders_count: int = 0
     favorites_received: int = 0
     votes_received: int = 0
     reputation: int = 0
@@ -206,6 +207,7 @@ async def compute_stats(session: AsyncSession, user) -> UserStats:
         answers_count=counts["answers_count"],
         accepted_count=counts["accepted_count"],
         tutorials_count=counts["tutorials_count"],
+        completed_orders_count=counts["completed_orders_count"],
         favorites_received=favorites_received,
         votes_received=votes_received,
         reputation=user.reputation,
@@ -332,6 +334,7 @@ async def build_profile(session: AsyncSession, user, include_recent: bool = Fals
         answers_count=stats.answers_count,
         tutorials_count=stats.tutorials_count,
         accepted_count=stats.accepted_count,
+        completed_orders_count=stats.completed_orders_count,
         current_title=current_title,
         achievements=achievements,
         titles=titles,

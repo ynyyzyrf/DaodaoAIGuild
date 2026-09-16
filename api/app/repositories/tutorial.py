@@ -17,6 +17,11 @@ class TutorialRepository:
         summary: str,
         content: str,
         category: str,
+        video_url: str | None = None,
+        video_provider: str | None = None,
+        video_embed_url: str | None = None,
+        video_title: str | None = None,
+        video_thumbnail_url: str | None = None,
     ) -> Tutorial:
         tutorial = Tutorial(
             author_id=author_id,
@@ -25,6 +30,11 @@ class TutorialRepository:
             summary=summary,
             content=content,
             category=category,
+            video_url=video_url,
+            video_provider=video_provider,
+            video_embed_url=video_embed_url,
+            video_title=video_title,
+            video_thumbnail_url=video_thumbnail_url,
         )
         self.session.add(tutorial)
         await self.session.commit()

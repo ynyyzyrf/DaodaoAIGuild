@@ -19,13 +19,14 @@ async function readApiBody(res: Response, fallback: string) {
 function LoginForm() {
   const router = useRouter();
   useSearchParams();
-  const next = "/orders/new";
+  const next = "/fde";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const omeEnabled = isOmeAccountConfigured();
+  const localLoginEnabled = process.env.NEXT_PUBLIC_ENABLE_LOCAL_LOGIN === "true";
 
   function displayError(message: string) {
     const normalized = message.trim();
@@ -77,8 +78,10 @@ function LoginForm() {
       if (omeEnabled) {
         const omeSession = await loginWithOmeAccount(username, password);
         await completeSystemLogin(omeSession.accessToken);
-      } else {
+      } else if (localLoginEnabled) {
         await loginWithLocalAccount();
+      } else {
+        throw new Error("OME 登入尚未配置完成");
       }
       notifyAuthChanged();
       router.push(next);

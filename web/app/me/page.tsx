@@ -12,6 +12,9 @@ import {
   ClipboardList,
   Handshake,
   Send,
+  Shield,
+  UserCog,
+  UserMinus,
   UserRound,
   Users,
   X,
@@ -24,24 +27,39 @@ import {
   getMyProfile,
   listCompanyJoinRequests,
   listCompanyOrders,
+  listCompanySolutions,
   listMyOrders,
   rejectCompanyJoinRequest,
+  releaseCompanyLobsterKnight,
 } from "@/lib/api";
 import { getUserQuestions, getUserTutorials, setCurrentTitle } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
+import { formatSolutionCoinPrice } from "@/lib/solution-price";
 import type {
   CompanyJoinRequestWithUserOut,
+  CompanyMemberUserOut,
   CompanyMyStateOut,
   CompanyOut,
   DemandOrderOut,
+  EnterpriseSolutionOut,
   MeOut,
   QuestionOut,
   TutorialOut,
 } from "@/lib/types";
-import InfoPanel from "@/components/InfoPanel";
+import InfoPanel, { RecentContributions } from "@/components/InfoPanel";
 import RoleShowcase from "@/components/RoleShowcase";
 
 type IdentityKey = "demand" | "fde" | "company";
+
+function solutionStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    draft: "草稿",
+    pending_review: "待審核",
+    approved: "已通過",
+    rejected: "已駁回",
+  };
+  return labels[status] ?? status;
+}
 
 const ORDER_STATUS_LABEL: Record<string, string> = {
   draft: "草稿",
@@ -134,6 +152,61 @@ function StatusPill({
   return <div className={`rounded-2xl border px-4 py-3 text-sm ${styles[tone]}`}>{children}</div>;
 }
 
+function MemberRow({
+  member,
+  action,
+}: {
+  member: CompanyMemberUserOut;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 w-full items-center justify-between gap-3 overflow-hidden rounded-xl border border-slate-200 bg-white px-3 py-2">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-bold text-brand-600">
+          {(member.display_name || member.username).slice(0, 1).toUpperCase()}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-slate-800">
+            {member.display_name || member.username}
+          </span>
+          <span className="block truncate text-xs text-slate-400">@{member.username}</span>
+        </span>
+      </div>
+      {action && <span className="shrink-0">{action}</span>}
+    </div>
+  );
+}
+
+function MemberSection({
+  title,
+  icon,
+  items,
+  renderAction,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  items: CompanyMemberUserOut[];
+  renderAction?: (member: CompanyMemberUserOut) => React.ReactNode;
+}) {
+  return (
+    <section className="min-w-0 rounded-xl">
+      <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+        {icon}
+        {title}
+      </h3>
+      <div className="mt-3 grid gap-2">
+        {items.length > 0 ? (
+          items.map((member) => (
+            <MemberRow key={`${title}-${member.id}`} member={member} action={renderAction?.(member)} />
+          ))
+        ) : (
+          <div className="min-w-0 rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-400">暫無成員</div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function KnightStatusAction({
   tone,
   message,
@@ -152,7 +225,7 @@ function KnightStatusAction({
   };
 
   return (
-    <div className={`flex flex-col gap-3 rounded-2xl border px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between ${styles[tone]}`}>
+    <div className={`flex flex-col gap-3 rounded-2xl border px-4 py-3 text-sm shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:flex-row sm:items-center sm:justify-between ${styles[tone]}`}>
       <span>{message}</span>
       <Link
         href={href}
@@ -249,6 +322,80 @@ function OrdersOverview({
   );
 }
 
+function AssignedKnightOrders({
+  orders,
+  loading,
+  error,
+}: {
+  orders: DemandOrderOut[];
+  loading: boolean;
+  error: string;
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-base font-bold text-slate-950">
+            <ClipboardList size={18} strokeWidth={2} />
+            分派給我的訂單
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">咨詢公司分派給你跟進的訂單會顯示在這裡。</p>
+        </div>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">{orders.length}</span>
+      </div>
+
+      {loading && <div className="mt-4 rounded-xl bg-slate-50 p-5 text-sm text-slate-400">載入分派訂單...</div>}
+      {error && <div className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-600">{error}</div>}
+
+      {!loading && !error && (
+        <div className="mt-4 divide-y divide-slate-100">
+          {orders.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-400">
+              暫無咨詢公司分派給你的訂單。
+            </div>
+          ) : (
+            orders.slice(0, 6).map((order) => (
+              <Link key={order.id} href={`/orders/${order.id}`} className="group block py-4 first:pt-0 last:pb-0">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ORDER_STATUS_TONE[order.status] ?? "bg-slate-100 text-slate-600"}`}>
+                        {ORDER_STATUS_LABEL[order.status] ?? order.status}
+                      </span>
+                      {order.claimed_company_name && (
+                        <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">
+                          {order.claimed_company_name}
+                        </span>
+                      )}
+                      <span className="text-xs text-slate-400">{formatDate(order.updated_at)}</span>
+                    </div>
+                    <h3 className="mt-2 truncate text-base font-bold text-slate-950 group-hover:text-brand-600">{order.title}</h3>
+                    <p className="mt-1 line-clamp-1 text-sm text-slate-500">
+                      {order.enterprise_name}
+                      {order.description ? ` · ${order.description}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-4 text-sm text-slate-500">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Coins size={15} strokeWidth={2} />
+                      {formatBudget(order.budget_amount)}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <CalendarClock size={15} strokeWidth={2} />
+                      {formatDate(order.expected_delivery_at)}
+                    </span>
+                    <ArrowRight size={16} strokeWidth={2.4} className="text-slate-300 transition group-hover:translate-x-1 group-hover:text-brand-500" />
+                  </div>
+                </div>
+              </Link>
+            ))
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function KnightProfileWorkbench({
   profile,
   loading,
@@ -258,6 +405,10 @@ function KnightProfileWorkbench({
   equippedBySlot,
   busy,
   onSetTitle,
+  assignedOrders,
+  ordersLoading,
+  ordersError,
+  footer,
 }: {
   profile: MeOut | null;
   loading: boolean;
@@ -267,6 +418,10 @@ function KnightProfileWorkbench({
   equippedBySlot: Record<string, MeOut["equipment"][number] | null>;
   busy: string | null;
   onSetTitle: (code: string) => void;
+  assignedOrders: DemandOrderOut[];
+  ordersLoading: boolean;
+  ordersError: string;
+  footer?: React.ReactNode;
 }) {
   if (loading) {
     return <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-400">載入公開 Profile...</div>;
@@ -281,21 +436,24 @@ function KnightProfileWorkbench({
   }
 
   return (
-    <section className="flex flex-col gap-5 lg:flex-row">
-      <aside className="w-full shrink-0 lg:sticky lg:top-20 lg:w-[38%] lg:max-w-[420px]">
+    <section className="grid gap-5 lg:grid-cols-[390px_minmax(0,1fr)] xl:grid-cols-[430px_minmax(0,1fr)]">
+      {footer && <div className="lg:col-span-2">{footer}</div>}
+      <aside className="w-full shrink-0 lg:sticky lg:top-20">
         <RoleShowcase equipment={equippedBySlot} user={profile} />
       </aside>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0">
         <InfoPanel
           user={profile}
-          questions={questions}
-          tutorials={tutorials}
           isOwner
           onSetTitle={onSetTitle}
           busy={busy}
           currentTitleCode={profile.current_title?.code}
           unlockedTitles={profile.titles.filter((title) => title.unlocked)}
         />
+      </div>
+      <div className="space-y-4 lg:col-span-2">
+        <RecentContributions questions={questions} tutorials={tutorials} />
+        <AssignedKnightOrders orders={assignedOrders} loading={ordersLoading} error={ordersError} />
       </div>
     </section>
   );
@@ -343,11 +501,13 @@ function CompanyProfileOverview({ company }: { company: CompanyOut }) {
 }
 
 function CompanyWorkbench({
+  currentUserId,
   companies,
   selectedCompany,
   selectedCompanyId,
   requests,
   assignmentOrders,
+  companySolutions,
   assigneeByOrderId,
   loading,
   busyKey,
@@ -358,12 +518,15 @@ function CompanyWorkbench({
   onAssign,
   onApprove,
   onReject,
+  onRelease,
 }: {
+  currentUserId: number;
   companies: CompanyOut[];
   selectedCompany: CompanyOut | null;
   selectedCompanyId: number | null;
   requests: CompanyJoinRequestWithUserOut[];
   assignmentOrders: DemandOrderOut[];
+  companySolutions: EnterpriseSolutionOut[];
   assigneeByOrderId: Record<number, string>;
   loading: boolean;
   busyKey: string;
@@ -374,6 +537,7 @@ function CompanyWorkbench({
   onAssign: (order: DemandOrderOut) => void;
   onApprove: (request: CompanyJoinRequestWithUserOut) => void;
   onReject: (request: CompanyJoinRequestWithUserOut) => void;
+  onRelease: (member: CompanyMemberUserOut) => void;
 }) {
   if (!selectedCompany) {
     return (
@@ -431,7 +595,69 @@ function CompanyWorkbench({
       {loading && <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-400">載入公司待辦...</div>}
 
       {!loading && (
-        <section className="grid gap-5 lg:grid-cols-[1.25fr_0.9fr]">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="flex items-center gap-2 text-base font-bold text-slate-950">
+                <Building2 size={18} strokeWidth={2} />
+                企業方案
+              </h3>
+              <p className="mt-1 text-sm text-slate-500">這裡只看最近狀態；完整上傳與管理回到公司中心處理。</p>
+            </div>
+            <Link
+              href="/company-center?tab=solutions"
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-slate-950 px-3 text-xs font-semibold text-white transition hover:bg-slate-800"
+            >
+              管理方案
+              <ArrowRight size={13} strokeWidth={2.4} />
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-100">
+              <div className="text-xs text-slate-400">全部方案</div>
+              <div className="mt-1 text-2xl font-bold text-slate-950">{companySolutions.length}</div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-100">
+              <div className="text-xs text-slate-400">待審核</div>
+              <div className="mt-1 text-2xl font-bold text-slate-950">
+                {companySolutions.filter((solution) => solution.status === "pending_review").length}
+              </div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-100">
+              <div className="text-xs text-slate-400">已通過</div>
+              <div className="mt-1 text-2xl font-bold text-slate-950">
+                {companySolutions.filter((solution) => solution.status === "approved").length}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
+            {companySolutions.length > 0 ? (
+              companySolutions.slice(0, 3).map((solution) => (
+                <div key={solution.id} className="grid gap-3 p-4 md:grid-cols-[1fr_auto] md:items-center">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="truncate text-sm font-bold text-slate-950">{solution.title}</h4>
+                      <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                        {solutionStatusLabel(solution.status)}
+                      </span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{solution.subtitle || "暫未填寫方案描述"}</p>
+                    {solution.review_note && <p className="mt-1 text-xs text-slate-400">審核備註：{solution.review_note}</p>}
+                  </div>
+                  <div className="text-sm font-bold text-brand-600">{formatSolutionCoinPrice(solution.budget_range)}</div>
+                </div>
+              ))
+            ) : (
+              <div className="p-6 text-center text-sm text-slate-400">暫無企業方案，前往公司中心上傳第一個方案。</div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {!loading && (
+        <section className="grid gap-5 xl:grid-cols-[1.1fr_0.95fr]">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -441,9 +667,7 @@ function CompanyWorkbench({
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">把公司已接下的需求分派給 active 龍蝦騎士。</p>
               </div>
-              <Link href="/company-center" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
-                全部
-              </Link>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">{assignmentOrders.length}</span>
             </div>
 
             <div className="mt-4 divide-y divide-slate-100">
@@ -497,9 +721,7 @@ function CompanyWorkbench({
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">審核主動申請加入公司的龍蝦騎士。</p>
               </div>
-              <Link href="/company-center" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
-                全部
-              </Link>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">{requests.length}</span>
             </div>
 
             <div className="mt-4 divide-y divide-slate-100">
@@ -540,12 +762,49 @@ function CompanyWorkbench({
         </section>
       )}
 
-      <div className="flex justify-end">
-        <Link href="/company-center" className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-white px-3 text-sm font-semibold text-slate-700 ring-1 ring-inset ring-slate-200 transition hover:text-brand-600 hover:ring-brand-200">
-          進入完整公司中心
-          <ArrowRight size={14} strokeWidth={2.4} />
-        </Link>
-      </div>
+      {!loading && (
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 pb-6 pt-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="flex items-center gap-2 text-base font-bold text-slate-950">
+                <Users size={18} strokeWidth={2} />
+                公司成員
+              </h3>
+              <p className="mt-1 text-sm text-slate-500">在個人中心直接查看 Owner、Admin 與 active 龍蝦騎士。</p>
+            </div>
+            <span className="text-xs text-slate-400">解除操作會保留歷史記錄</span>
+          </div>
+
+          <div className="mt-5 grid items-start gap-5 lg:grid-cols-2 xl:grid-cols-[0.85fr_0.85fr_1.3fr]">
+            <MemberSection
+              title="Owner"
+              icon={<Shield size={16} strokeWidth={2} />}
+              items={selectedCompany.members.owner ? [selectedCompany.members.owner] : []}
+            />
+            <MemberSection
+              title="Admin"
+              icon={<UserCog size={16} strokeWidth={2} />}
+              items={selectedCompany.members.admins}
+            />
+            <MemberSection
+              title="龍蝦騎士"
+              icon={<Users size={16} strokeWidth={2} />}
+              items={selectedCompany.members.lobster_knights}
+              renderAction={(member) => (
+                <button
+                  type="button"
+                  onClick={() => onRelease(member)}
+                  disabled={busyKey === `release-${member.id}` || member.id === currentUserId}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  title={member.id === currentUserId ? "不能自行解除公司歸屬" : "解除正式歸屬"}
+                >
+                  <UserMinus size={14} strokeWidth={2.2} />
+                </button>
+              )}
+            />
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -565,6 +824,7 @@ export default function MyCenterPage() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
   const [companyRequests, setCompanyRequests] = useState<CompanyJoinRequestWithUserOut[]>([]);
   const [companyOrders, setCompanyOrders] = useState<DemandOrderOut[]>([]);
+  const [companySolutions, setCompanySolutions] = useState<EnterpriseSolutionOut[]>([]);
   const [assigneeByOrderId, setAssigneeByOrderId] = useState<Record<number, string>>({});
   const [companyLoading, setCompanyLoading] = useState(false);
   const [companyBusyKey, setCompanyBusyKey] = useState("");
@@ -639,12 +899,14 @@ export default function MyCenterPage() {
     setCompanyLoading(true);
     setCompanyError("");
     try {
-      const [nextRequests, nextOrders] = await Promise.all([
+      const [nextRequests, nextOrders, nextSolutions] = await Promise.all([
         listCompanyJoinRequests(companyId),
         listCompanyOrders(companyId, { status: "claimed", page_size: 50 }),
+        listCompanySolutions(companyId, { page_size: 50 }),
       ]);
       setCompanyRequests(nextRequests);
       setCompanyOrders(nextOrders.items);
+      setCompanySolutions(nextSolutions.items);
     } catch (err) {
       setCompanyError(err instanceof Error ? err.message : "載入公司待辦失敗");
     } finally {
@@ -656,13 +918,14 @@ export default function MyCenterPage() {
     if (!selectedCompanyId) {
       setCompanyRequests([]);
       setCompanyOrders([]);
+      setCompanySolutions([]);
       return;
     }
     refreshCompanyDesk(selectedCompanyId);
   }, [refreshCompanyDesk, selectedCompanyId]);
 
   async function runCompanyAction(key: string, action: () => Promise<unknown>, success: string) {
-    if (!selectedCompanyId) return;
+    if (!selectedCompanyId) return false;
     setCompanyBusyKey(key);
     setCompanyError("");
     setCompanyMessage("");
@@ -672,8 +935,10 @@ export default function MyCenterPage() {
       setCompanyState(nextState);
       await refreshCompanyDesk(selectedCompanyId);
       setCompanyMessage(success);
+      return true;
     } catch (err) {
       setCompanyError(err instanceof Error ? err.message : "操作失敗");
+      return false;
     } finally {
       setCompanyBusyKey("");
     }
@@ -711,11 +976,13 @@ export default function MyCenterPage() {
     { key: "fde", label: "龍蝦騎士", status: isVerifiedFde ? "已確認" : "未確認" },
     { key: "company", label: "咨詢公司", status: managesCompany ? `${managedCompanies.length} 家` : "未管理" },
   ];
+  const myDemandOrders = orders.filter((order) => order.creator_id === cachedUser.id);
+  const assignedKnightOrders = orders.filter((order) => order.assigned_fde_user_id === cachedUser.id);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-10">
-      <header className="relative rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.05)] sm:p-8">
-        <div className="mb-6 flex flex-wrap gap-1.5 lg:absolute lg:right-8 lg:top-8 lg:mb-0">
+    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <header className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_16px_44px_rgba(15,23,42,0.05)] sm:p-6">
+        <div className="mb-5 flex flex-wrap gap-1.5 lg:absolute lg:right-6 lg:top-6 lg:mb-0">
           {identityTabs.map((item) => (
             <button
               key={item.key}
@@ -732,29 +999,29 @@ export default function MyCenterPage() {
             </button>
           ))}
         </div>
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-600">
               <UserRound size={16} strokeWidth={2} />
               身份總覽
             </div>
-            <h1 className="mt-5 truncate text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">{displayName}</h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
+            <h1 className="mt-4 truncate text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">{displayName}</h1>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
               依照你目前的身份切換工作入口。這裡只做總覽，具體操作會回到對應中心處理。
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:w-[520px] lg:pt-16">
-            <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-100">
+          <div className="grid gap-3 sm:grid-cols-3 lg:w-[520px] lg:pt-12">
+            <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-100">
               <div className="text-xs text-slate-400">龍蝦騎士</div>
               <div className="mt-1 font-bold text-slate-950">{isVerifiedFde ? "已確認" : "未確認"}</div>
             </div>
-            <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-100">
+            <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-100">
               <div className="text-xs text-slate-400">所屬公司</div>
               <div className="mt-1 truncate font-bold text-slate-950">
                 {activeCompany?.name ?? (pendingJoin ? "審核中" : "暫無")}
               </div>
             </div>
-            <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-100">
+            <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-100">
               <div className="text-xs text-slate-400">管理公司</div>
               <div className="mt-1 font-bold text-slate-950">{managedCompanies.length} 家</div>
             </div>
@@ -763,13 +1030,13 @@ export default function MyCenterPage() {
         {error && <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
       </header>
 
-      <section className="mt-8">
+      <section className="mt-6">
         {activeTab === "demand" && (
-          <OrdersOverview orders={orders} loading={ordersLoading} error={ordersError} />
+          <OrdersOverview orders={myDemandOrders} loading={ordersLoading} error={ordersError} />
         )}
 
         {activeTab === "fde" && (
-          <div className="space-y-4">
+          <div>
             <KnightProfileWorkbench
               profile={profile}
               loading={profileLoading}
@@ -779,43 +1046,50 @@ export default function MyCenterPage() {
               equippedBySlot={equippedBySlot}
               busy={busy}
               onSetTitle={handleSetTitle}
+              assignedOrders={assignedKnightOrders}
+              ordersLoading={ordersLoading}
+              ordersError={ordersError}
+              footer={
+                <>
+                  {belongsToCompany && (
+                    <KnightStatusAction
+                      tone="green"
+                      message={`你已正式加入「${activeCompany.name}」。`}
+                      href="/opportunities"
+                      label="前往機會池"
+                    />
+                  )}
+                  {!belongsToCompany && pendingJoin && (
+                    <KnightStatusAction
+                      tone="amber"
+                      message="你有一個待處理的公司加入申請。"
+                      href="/companies"
+                      label="查看公司"
+                    />
+                  )}
+                  {!belongsToCompany && !pendingJoin && isVerifiedFde && (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <EntryCard
+                        href="/companies"
+                        icon={<BriefcaseBusiness size={18} strokeWidth={2} />}
+                        title="加入咨詢公司"
+                        description="瀏覽已入駐公司，申請加入合適的合作組織。"
+                      />
+                    </div>
+                  )}
+                  {!isVerifiedFde && (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <EntryCard
+                        href="/knights/become"
+                        icon={<Handshake size={18} strokeWidth={2} />}
+                        title="成為龍蝦騎士"
+                        description="了解龍蝦騎士身份建立方式。"
+                      />
+                    </div>
+                  )}
+                </>
+              }
             />
-            {belongsToCompany && (
-              <KnightStatusAction
-                tone="green"
-                message={`你已正式加入「${activeCompany.name}」。`}
-                href="/opportunities"
-                label="前往機會池"
-              />
-            )}
-            {!belongsToCompany && pendingJoin && (
-              <KnightStatusAction
-                tone="amber"
-                message="你有一個待處理的公司加入申請。"
-                href="/companies"
-                label="查看公司"
-              />
-            )}
-            {!belongsToCompany && !pendingJoin && isVerifiedFde && (
-              <div className="grid gap-4 md:grid-cols-2">
-                <EntryCard
-                  href="/companies"
-                  icon={<BriefcaseBusiness size={18} strokeWidth={2} />}
-                  title="加入咨詢公司"
-                  description="瀏覽已入駐公司，申請加入合適的合作組織。"
-                />
-              </div>
-            )}
-            {!isVerifiedFde && (
-              <div className="grid gap-4 md:grid-cols-2">
-                <EntryCard
-                  href="/knights/become"
-                  icon={<Handshake size={18} strokeWidth={2} />}
-                  title="成為龍蝦騎士"
-                  description="了解龍蝦騎士身份建立方式。"
-                />
-              </div>
-            )}
           </div>
         )}
 
@@ -830,11 +1104,13 @@ export default function MyCenterPage() {
               <StatusPill tone="slate">你目前不是任何公司的 Owner / Admin。</StatusPill>
             )}
             <CompanyWorkbench
+              currentUserId={cachedUser.id}
               companies={managedCompanies}
               selectedCompany={selectedCompany}
               selectedCompanyId={selectedCompany?.id ?? null}
               requests={companyRequests}
               assignmentOrders={companyOrders}
+              companySolutions={companySolutions}
               assigneeByOrderId={assigneeByOrderId}
               loading={companyLoading}
               busyKey={companyBusyKey}
@@ -876,6 +1152,14 @@ export default function MyCenterPage() {
                   `reject-${request.id}`,
                   () => rejectCompanyJoinRequest(selectedCompany.id, request.id),
                   "已拒絕加入申請。",
+                );
+              }}
+              onRelease={(member) => {
+                if (!selectedCompany) return;
+                runCompanyAction(
+                  `release-${member.id}`,
+                  () => releaseCompanyLobsterKnight(selectedCompany.id, member.id),
+                  "已解除龍蝦騎士正式歸屬。",
                 );
               }}
             />

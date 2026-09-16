@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import {
   Check,
   Eye,
+  ExternalLink,
   FileQuestion,
   Trash2,
   Undo2,
@@ -30,6 +31,66 @@ const TYPE_BADGE: Record<string, string> = {
   answer: "badge-gray",
   tutorial: "badge-amber",
 };
+
+function ModerationVideoPreview({ detail }: { detail: ModerationDetail }) {
+  if (!detail.video_url) return null;
+
+  const title = detail.video_title || "教程视频";
+  if (detail.video_provider === "direct") {
+    return (
+      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-950">
+        <video
+          src={detail.video_url}
+          controls
+          preload="metadata"
+          className="aspect-video w-full bg-black"
+        />
+        <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm text-slate-200">
+          <span className="line-clamp-1 font-medium">{title}</span>
+          <a
+            href={detail.video_url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex shrink-0 items-center gap-1 text-slate-300 hover:text-white"
+          >
+            打开原视频
+            <ExternalLink size={14} strokeWidth={2} />
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (detail.video_embed_url) {
+    return (
+      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-950">
+        <iframe
+          src={detail.video_embed_url}
+          title={title}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          sandbox="allow-scripts allow-same-origin allow-presentation"
+          className="aspect-video w-full border-0 bg-black"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div className="text-sm font-semibold text-slate-800">{title}</div>
+      <a
+        href={detail.video_url}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+      >
+        打开外部视频
+        <ExternalLink size={14} strokeWidth={2} />
+      </a>
+    </div>
+  );
+}
 
 function ModerationContent() {
   const router = useRouter();
@@ -326,6 +387,7 @@ function ModerationContent() {
 
             <div className="flex-1 overflow-y-auto px-6 py-5">
               <h2 className="text-lg font-bold text-slate-900">{detail.title}</h2>
+              <ModerationVideoPreview detail={detail} />
 
               {/* 举报信息 */}
               {detail.reports.length > 0 && (

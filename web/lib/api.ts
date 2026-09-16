@@ -6,8 +6,11 @@ import type {
   CompanyJoinRequestWithUserOut,
   CompanyMyStateOut,
   CompanyOut,
+  ChatMessageOut,
   DemandOrderCreatePayload,
   DemandOrderOut,
+  EnterpriseSolutionCreatePayload,
+  EnterpriseSolutionOut,
   FdeProjectRecordOut,
   FeedItemOut,
   LeaderboardOut,
@@ -25,6 +28,7 @@ import type {
   TutorialOut,
   UploadOut,
   UserProfileOut,
+  RequirementDraft,
 } from "./types";
 
 export type LeaderboardMetric = "reputation" | "tutorial" | "rescue";
@@ -178,6 +182,56 @@ export function releaseCompanyLobsterKnight(companyId: number, userId: number) {
   );
 }
 
+export function listSolutions(params: { page?: number; page_size?: number; q?: string; category?: string; industry?: string; scenario?: string; sort?: "recommended" | "cases" } = {}) {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.page_size) qs.set("page_size", String(params.page_size));
+  if (params.q) qs.set("q", params.q);
+  if (params.category) qs.set("category", params.category);
+  if (params.industry) qs.set("industry", params.industry);
+  if (params.scenario) qs.set("scenario", params.scenario);
+  if (params.sort) qs.set("sort", params.sort);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return api.get<Paginated<EnterpriseSolutionOut>>(`/solutions${suffix}`);
+}
+
+export function listHomeSolutions(limit = 3) {
+  return api.get<EnterpriseSolutionOut[]>(`/solutions/home?limit=${limit}`);
+}
+
+export function getSolution(solutionId: number) {
+  return api.get<EnterpriseSolutionOut>(`/solutions/${solutionId}`);
+}
+
+export function sendChatMessage(
+  query: string,
+  conversationId?: string | null,
+  options: { intentConfirmed?: boolean; requirement?: RequirementDraft } = {},
+) {
+  return api.post<ChatMessageOut>("/chat/messages", {
+    query,
+    conversation_id: conversationId || undefined,
+    intent_confirmed: options.intentConfirmed ?? false,
+    requirement: options.requirement,
+  });
+}
+
+export function listCompanySolutions(companyId: number, params: { page?: number; page_size?: number } = {}) {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.page_size) qs.set("page_size", String(params.page_size));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return api.get<Paginated<EnterpriseSolutionOut>>(`/companies/${companyId}/solutions${suffix}`);
+}
+
+export function createCompanySolution(companyId: number, payload: EnterpriseSolutionCreatePayload) {
+  return api.post<EnterpriseSolutionOut>(`/companies/${companyId}/solutions`, payload);
+}
+
+export function submitCompanySolution(companyId: number, solutionId: number) {
+  return api.post<EnterpriseSolutionOut>(`/companies/${companyId}/solutions/${solutionId}/submit`);
+}
+
 // —— 需求訂單 / 機會池 ——
 
 export function createOrder(payload: DemandOrderCreatePayload) {
@@ -246,6 +300,10 @@ export function submitOrderDelivery(companyId: number, orderId: number, summary:
 
 export function acceptOrderDelivery(orderId: number, acceptanceNote: string) {
   return api.post<DemandOrderOut>(`/orders/${orderId}/accept-delivery`, { acceptance_note: acceptanceNote });
+}
+
+export function updateOrderWorkStatus(orderId: number, status: "following" | "completed") {
+  return api.post<DemandOrderOut>(`/orders/${orderId}/work-status`, { status });
 }
 
 export function createOrderReview(

@@ -12,15 +12,18 @@ from app.api.routes import (
 from app.api.routes import (
     agent_ws as agent_ws_routes,
 )
+from app.api.routes import external_orders
 from app.api.routes import (
     answers,
     auth,
     companies,
+    chat,
     health,
     home,
     orders,
     pmdesktop,
     questions,
+    solutions,
     tags,
     tutorials,
     uploads,
@@ -59,6 +62,9 @@ def create_app() -> FastAPI:
     app.include_router(home.router, prefix=settings.api_v1_prefix)
     app.include_router(users.router, prefix=settings.api_v1_prefix)
     app.include_router(companies.router, prefix=settings.api_v1_prefix)
+    app.include_router(chat.router, prefix=settings.api_v1_prefix)
+    app.include_router(solutions.router, prefix=settings.api_v1_prefix)
+    app.include_router(solutions.company_router, prefix=settings.api_v1_prefix)
     app.include_router(orders.router, prefix=settings.api_v1_prefix)
     app.include_router(orders.opportunities_router, prefix=settings.api_v1_prefix)
     app.include_router(orders.company_orders_router, prefix=settings.api_v1_prefix)
@@ -81,12 +87,18 @@ def create_app() -> FastAPI:
     app.include_router(admin_routes.auth.router, prefix=settings.api_v1_prefix)
     app.include_router(admin_routes.companies.router, prefix=settings.api_v1_prefix)
     app.include_router(admin_routes.orders.router, prefix=settings.api_v1_prefix)
+    app.include_router(admin_routes.solutions.router, prefix=settings.api_v1_prefix)
     app.include_router(admin_routes.dashboard.router, prefix=settings.api_v1_prefix)
     app.include_router(admin_routes.users.router, prefix=settings.api_v1_prefix)
     app.include_router(admin_routes.moderation.router, prefix=settings.api_v1_prefix)
     app.include_router(admin_routes.missions.router, prefix=settings.api_v1_prefix)
     app.include_router(admin_routes.sensitive_words.router, prefix=settings.api_v1_prefix)
+    app.include_router(admin_routes.settings.router, prefix=settings.api_v1_prefix)
     app.include_router(admin_routes.audit.router, prefix=settings.api_v1_prefix)
+
+    # External Open API：machine-to-machine integrations, scoped separately from
+    # the browser/admin/internal API surface.
+    app.include_router(external_orders.router, prefix="/api/open/v1")
 
     # 本地开发直接由 FastAPI 服务 /media 下的上传文件；生产由 nginx 优先拦截。
     media_dir = settings.media_dir

@@ -44,6 +44,33 @@ async def test_profile_stats_for_question_author(client, auth_headers, auth_head
     assert data["tutorials_count"] == 1
 
 
+async def test_profile_stats_include_completed_assigned_orders(client, auth_headers, auth_headers_bob, db):
+    from app.models.order import DemandOrder
+
+    alice_id = await _user_id(client)
+    bob_id = await _user_id(client, "bob")
+    async with db() as session:
+        session.add_all(
+            [
+                DemandOrder(creator_id=alice_id, assigned_fde_user_id=bob_id, title="Accepted order", status="accepted"),
+                DemandOrder(creator_id=alice_id, assigned_fde_user_id=bob_id, title="Settled order", status="settled"),
+                DemandOrder(creator_id=alice_id, assigned_fde_user_id=bob_id, title="Rated order", status="rated"),
+                DemandOrder(
+                    creator_id=alice_id,
+                    assigned_fde_user_id=bob_id,
+                    title="Following order",
+                    status="requirement_following",
+                ),
+                DemandOrder(creator_id=alice_id, title="Unassigned accepted order", status="accepted"),
+            ]
+        )
+        await session.commit()
+
+    resp = await client.get(f"/api/v1/users/{bob_id}")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["completed_orders_count"] == 3
+
+
 async def test_leaderboard_order(client, auth_headers, auth_headers_bob):
     await client.post("/api/v1/questions", json={"title": "问题"}, headers=auth_headers)  # alice +2
     await client.post(

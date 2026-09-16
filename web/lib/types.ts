@@ -58,6 +58,7 @@ export interface UserProfileOut extends UserOut {
   answers_count: number;
   tutorials_count: number;
   accepted_count: number;
+  completed_orders_count: number;
   exp: number;
   current_title: TitleOut | null;
   achievements: AchievementOut[];
@@ -150,6 +151,11 @@ export interface TutorialOut {
   summary: string;
   category: string;
   status: string;
+  video_url: string | null;
+  video_provider: string | null;
+  video_embed_url: string | null;
+  video_title: string | null;
+  video_thumbnail_url: string | null;
   view_count: number;
   like_count: number;
   created_at: string;
@@ -166,6 +172,8 @@ export interface TutorialCreatePayload {
   summary?: string;
   content: string;
   category: string;
+  video_url?: string;
+  video_title?: string;
 }
 
 export interface CompanyMemberUserOut {
@@ -242,6 +250,40 @@ export interface CompanyMyStateOut {
   managed_companies: CompanyOut[];
 }
 
+export interface EnterpriseSolutionOut {
+  id: number;
+  company_id: number;
+  company_name: string;
+  creator_id: number;
+  title: string;
+  subtitle: string;
+  category: string;
+  industry: string;
+  scenario: string;
+  delivery_cycle: string;
+  budget_range: string;
+  cover_image_url: string;
+  tags: string[];
+  case_count: number;
+  status: string;
+  review_note: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EnterpriseSolutionCreatePayload {
+  title: string;
+  subtitle?: string;
+  category?: string;
+  industry?: string;
+  scenario?: string;
+  delivery_cycle?: string;
+  budget_range?: string;
+  cover_image_url?: string;
+  tags?: string[];
+  case_count?: number;
+}
+
 export interface DemandOrderOut {
   id: number;
   creator_id: number;
@@ -288,6 +330,27 @@ export interface DemandOrderCreatePayload {
   business_background?: string;
   deliverable_expectation?: string;
   attachments?: string;
+}
+
+export interface RequirementDraft {
+  enterprise_name: string;
+  contact_name: string;
+  contact_email: string;
+  product_name: string;
+  title: string;
+  description: string;
+  business_background: string;
+  deliverable_expectation: string;
+  budget_note: string;
+  expected_delivery_at: string | null;
+}
+
+export interface ChatMessageOut {
+  answer: string;
+  conversation_id: string | null;
+  message_id: string | null;
+  action: "open_requirement_form" | null;
+  requirement_draft: RequirementDraft | null;
 }
 
 export interface PmDesktopProductOut {

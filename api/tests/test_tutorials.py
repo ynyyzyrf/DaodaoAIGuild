@@ -17,8 +17,44 @@ async def test_create_tutorial(client, auth_headers):
     assert data["content"].startswith("# 教程")
     assert data["author"]["username"] == "alice"
     assert data["slug"]
+    assert data["video_url"] is None
     # V3.2：新教程默认 pending（预审），未通过前不在前台列表
     assert data["status"] == "pending"
+
+
+async def test_create_tutorial_with_external_mp4_url(client, auth_headers):
+    video_url = "https://video-builder.oss-cn-hongkong.aliyuncs.com/video/e22261b3-29c1-448d-a62c-d35b9caa30f7.mp4?t=1789376086"
+    resp = await client.post(
+        "/api/v1/tutorials",
+        json={
+            "title": "带视频的教程",
+            "content": "正文内容",
+            "category": "AI Agent",
+            "video_url": video_url,
+            "video_title": "OSS 演示视频",
+        },
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["video_url"] == video_url
+    assert data["video_provider"] == "direct"
+    assert data["video_embed_url"] is None
+    assert data["video_title"] == "OSS 演示视频"
+
+
+async def test_create_tutorial_rejects_non_http_video_url(client, auth_headers):
+    resp = await client.post(
+        "/api/v1/tutorials",
+        json={
+            "title": "非法视频",
+            "content": "正文内容",
+            "category": "AI Agent",
+            "video_url": "javascript:alert(1)",
+        },
+        headers=auth_headers,
+    )
+    assert resp.status_code == 400
 
 
 async def test_create_tutorial_requires_auth(client):

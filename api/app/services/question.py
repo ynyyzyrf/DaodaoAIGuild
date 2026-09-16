@@ -13,6 +13,7 @@ from app.schemas.question import AnswerOut, QuestionCreate, QuestionOut
 from app.schemas.upload import AttachmentOut
 from app.schemas.user import UserOut, masked_author
 from app.services.gamification import process_event
+from app.services.question_assistant import maybe_answer_question
 
 
 def _answer_out(a, author, vote_count: int) -> AnswerOut:
@@ -75,10 +76,10 @@ async def _build_detail(session: AsyncSession, q: Question) -> QuestionOut:
 
 
 async def create_question(session: AsyncSession, author_id: int, payload: QuestionCreate) -> QuestionOut:
+    author = await UserRepository(session).get_by_id(author_id)
     if payload.is_anonymous:
-        user = await UserRepository(session).get_by_id(author_id)
-        if user is not None:
-            await UserRepository(session).ensure_anon_number(user)
+        if author is not None:
+            await UserRepository(session).ensure_anon_number(author)
     q = await QuestionRepository(session).create(
         author_id=author_id,
         title=payload.title,
@@ -95,6 +96,7 @@ async def create_question(session: AsyncSession, author_id: int, payload: Questi
             payload.attachments, target_type="question", target_id=q.id
         )
     await process_event(session, author_id, "question_created")
+    await maybe_answer_question(session, q, author)
     return await _build_detail(session, q)
 
 

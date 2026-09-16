@@ -16,6 +16,11 @@ class Tutorial(Base):
     summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
     content: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    video_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    video_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    video_embed_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    video_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    video_thumbnail_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     # 状态：pending（待预审）/ draft（被打回，用户可改）/ published（已通过）/ hidden（管理员隐藏，保留数据）
     # V3.2：新教程默认 pending，必须管理员通过才 published（docs/3.2.md §4.1）
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")

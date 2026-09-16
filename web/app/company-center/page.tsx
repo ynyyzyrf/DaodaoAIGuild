@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Building2,
   Check,
@@ -18,20 +19,38 @@ import {
 import {
   assignOrderFde,
   approveCompanyJoinRequest,
+  createCompanySolution,
   getMyCompanyState,
   listCompanyJoinRequests,
   listCompanyOrders,
+  listCompanySolutions,
   rejectCompanyJoinRequest,
   releaseCompanyLobsterKnight,
+  submitCompanySolution,
 } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
+import { formatSolutionCoinPrice } from "@/lib/solution-price";
 import type {
   CompanyJoinRequestWithUserOut,
   CompanyMemberUserOut,
   CompanyMyStateOut,
   CompanyOut,
   DemandOrderOut,
+  EnterpriseSolutionOut,
 } from "@/lib/types";
+
+type WorkspaceTab = "overview" | "solutions" | "orders" | "members";
+type SolutionMode = "uploaded" | "new";
+
+function solutionStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    draft: "草稿",
+    pending_review: "待審核",
+    approved: "已通過",
+    rejected: "已駁回",
+  };
+  return labels[status] ?? status;
+}
 
 function MemberRow({
   member,
@@ -41,19 +60,19 @@ function MemberRow({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
-      <div className="flex min-w-0 items-center gap-3">
+    <div className="flex min-w-0 w-full items-center justify-between gap-3 overflow-hidden rounded-lg border border-slate-200 bg-white px-3 py-2">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-bold text-brand-600">
           {(member.display_name || member.username).slice(0, 1).toUpperCase()}
         </span>
-        <span className="min-w-0">
+        <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-slate-800">
             {member.display_name || member.username}
           </span>
           <span className="block truncate text-xs text-slate-400">@{member.username}</span>
         </span>
       </div>
-      {action}
+      {action && <span className="shrink-0">{action}</span>}
     </div>
   );
 }
@@ -70,7 +89,7 @@ function MemberSection({
   renderAction?: (member: CompanyMemberUserOut) => React.ReactNode;
 }) {
   return (
-    <section>
+    <section className="min-w-0">
       <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
         {icon}
         {title}
@@ -81,7 +100,7 @@ function MemberSection({
             <MemberRow key={`${title}-${member.id}`} member={member} action={renderAction?.(member)} />
           ))
         ) : (
-          <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-400">暫無成員</div>
+          <div className="min-w-0 rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-400">暫無成員</div>
         )}
       </div>
     </section>
@@ -130,18 +149,55 @@ export default function CompanyCenterPage() {
   const [state, setState] = useState<CompanyMyStateOut | null>(null);
   const [requests, setRequests] = useState<CompanyJoinRequestWithUserOut[]>([]);
   const [assignmentOrders, setAssignmentOrders] = useState<DemandOrderOut[]>([]);
+  const [companySolutions, setCompanySolutions] = useState<EnterpriseSolutionOut[]>([]);
   const [assigneeByOrderId, setAssigneeByOrderId] = useState<Record<number, string>>({});
+  const [solutionForm, setSolutionForm] = useState({
+    title: "",
+    subtitle: "",
+    category: "企業知識庫",
+    industry: "",
+    scenario: "",
+    delivery_cycle: "",
+    budget_range: "",
+    tags: "",
+    case_count: "0",
+  });
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<WorkspaceTab>("overview");
+  const [activeSolutionMode, setActiveSolutionMode] = useState<SolutionMode>("uploaded");
 
   const managedCompanies = state?.managed_companies ?? [];
   const selectedCompany = managedCompanies.find((company) => company.id === selectedCompanyId) ?? managedCompanies[0] ?? null;
 
+  const workspaceTabs: Array<{ key: WorkspaceTab; label: string; count?: number }> = [
+    { key: "overview", label: "概覽" },
+    { key: "solutions", label: "方案", count: companySolutions.length },
+    { key: "orders", label: "需求", count: assignmentOrders.length + requests.length },
+    { key: "members", label: "成員", count: selectedCompany?.members.lobster_knights.length ?? 0 },
+  ];
+
+  function selectWorkspaceTab(tab: WorkspaceTab) {
+    setActiveWorkspaceTab(tab);
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    window.history.replaceState(null, "", url.toString());
+  }
+
   useEffect(() => {
     setCachedUser(getCurrentUser());
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "overview" || tab === "solutions" || tab === "orders" || tab === "members") {
+      setActiveWorkspaceTab(tab);
+    }
   }, []);
 
   async function refresh(companyId?: number) {
@@ -150,15 +206,18 @@ export default function CompanyCenterPage() {
     const nextCompanyId = companyId ?? selectedCompanyId ?? nextState.managed_companies[0]?.id ?? null;
     setSelectedCompanyId(nextCompanyId);
     if (nextCompanyId) {
-      const [nextRequests, nextOrders] = await Promise.all([
+      const [nextRequests, nextOrders, nextSolutions] = await Promise.all([
         listCompanyJoinRequests(nextCompanyId),
         listCompanyOrders(nextCompanyId, { status: "claimed", page_size: 50 }),
+        listCompanySolutions(nextCompanyId, { page_size: 50 }),
       ]);
       setRequests(nextRequests);
       setAssignmentOrders(nextOrders.items);
+      setCompanySolutions(nextSolutions.items);
     } else {
       setRequests([]);
       setAssignmentOrders([]);
+      setCompanySolutions([]);
     }
   }
 
@@ -175,7 +234,7 @@ export default function CompanyCenterPage() {
   }, [cachedUser]);
 
   async function runAction(key: string, action: () => Promise<unknown>, success: string) {
-    if (!selectedCompany) return;
+    if (!selectedCompany) return false;
     setBusyKey(key);
     setError("");
     setMessage("");
@@ -183,8 +242,10 @@ export default function CompanyCenterPage() {
       await action();
       await refresh(selectedCompany.id);
       setMessage(success);
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "操作失败");
+      return false;
     } finally {
       setBusyKey("");
     }
@@ -205,6 +266,51 @@ export default function CompanyCenterPage() {
     );
   }
 
+  async function handleCreateSolution() {
+    if (!selectedCompany) return;
+    if (!solutionForm.title.trim()) {
+      setError("請先填寫方案名稱");
+      setMessage("");
+      return;
+    }
+    const created = await runAction(
+      "solution-create",
+      async () => {
+        const created = await createCompanySolution(selectedCompany.id, {
+          title: solutionForm.title.trim(),
+          subtitle: solutionForm.subtitle.trim(),
+          category: solutionForm.category.trim(),
+          industry: solutionForm.industry.trim(),
+          scenario: solutionForm.scenario.trim(),
+          delivery_cycle: solutionForm.delivery_cycle.trim(),
+          budget_range: solutionForm.budget_range.trim(),
+          tags: solutionForm.tags
+            .split(/[,，\s]+/)
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+            .slice(0, 8),
+          case_count: Number(solutionForm.case_count) || 0,
+        });
+        await submitCompanySolution(selectedCompany.id, created.id);
+        setSolutionForm({
+          title: "",
+          subtitle: "",
+          category: "企業知識庫",
+          industry: "",
+          scenario: "",
+          delivery_cycle: "",
+          budget_range: "",
+          tags: "",
+          case_count: "0",
+        });
+      },
+      "企業方案已提交，等待 Daostore 後台管理員審核。",
+    );
+    if (created) {
+      setActiveSolutionMode("uploaded");
+    }
+  }
+
   if (!cachedUser) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
@@ -223,17 +329,6 @@ export default function CompanyCenterPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-10">
-      <header className="border-b border-slate-100 pb-8">
-        <div className="inline-flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-600">
-          <Building2 size={16} strokeWidth={2} />
-          咨詢公司中心
-        </div>
-        <h1 className="mt-4 text-2xl font-bold text-slate-900">公司 Owner / Admin 工作台</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-          公司管理權限來源於 Company Role，和是否為龍蝦騎士互相獨立。這裡處理公司資料、加入申請與正式龍蝦騎士歸屬。
-        </p>
-      </header>
-
       {error && <div className="mt-6 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>}
       {message && <div className="mt-6 rounded-lg border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700">{message}</div>}
 
@@ -252,7 +347,7 @@ export default function CompanyCenterPage() {
           </div>
         </section>
       ) : (
-        <div className="mt-8 space-y-8">
+        <div className="space-y-8">
           {managedCompanies.length > 1 && (
             <div className="flex flex-wrap gap-2">
               {managedCompanies.map((company) => (
@@ -275,9 +370,233 @@ export default function CompanyCenterPage() {
             </div>
           )}
 
-          <CompanyProfileCard company={selectedCompany} />
+          {activeWorkspaceTab !== "solutions" && (
+            <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              {workspaceTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => selectWorkspaceTab(tab.key)}
+                  className={`inline-flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-colors ${
+                    activeWorkspaceTab === tab.key
+                      ? "bg-slate-950 text-white shadow-sm"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-950"
+                  }`}
+                >
+                  {tab.label}
+                  {typeof tab.count === "number" && (
+                    <span className={`rounded-full px-1.5 py-0.5 text-[11px] ${activeWorkspaceTab === tab.key ? "bg-white/15 text-white" : "bg-slate-100 text-slate-500"}`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
 
-          <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          {activeWorkspaceTab === "overview" && (
+            <>
+              <CompanyProfileCard company={selectedCompany} />
+              <div className="grid gap-3 md:grid-cols-4">
+                {[
+                  ["企業方案", companySolutions.length],
+                  ["待分配需求", assignmentOrders.length],
+                  ["加入申請", requests.length],
+                  ["龍蝦騎士", selectedCompany.members.lobster_knights.length],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="text-xs font-medium text-slate-400">{label}</div>
+                    <div className="mt-2 text-2xl font-bold text-slate-950">{value}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {activeWorkspaceTab === "solutions" && (
+          <section className="card p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
+                  <ClipboardList size={18} strokeWidth={2} />
+                  企業方案
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">這裡只做兩件事：查看已上傳方案，或新增一個方案。</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveSolutionMode("new")}
+                className="btn btn-primary btn-sm"
+              >
+                新增方案
+              </button>
+            </div>
+
+            {activeSolutionMode === "uploaded" && (
+              <div className="mt-5 divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                {companySolutions.length > 0 ? (
+                  companySolutions.map((solution) => (
+                    <div key={solution.id} className="grid gap-3 p-4 md:grid-cols-[1fr_auto] md:items-center">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-bold text-slate-900">{solution.title}</h3>
+                          <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                            {solutionStatusLabel(solution.status)}
+                          </span>
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{solution.subtitle || "暫未填寫方案描述"}</p>
+                        {solution.review_note && <p className="mt-1 text-xs text-slate-400">審核備註：{solution.review_note}</p>}
+                      </div>
+                      <div className="text-sm font-bold text-brand-600">{formatSolutionCoinPrice(solution.budget_range)}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center">
+                    <div className="text-sm text-slate-400">暫無企業方案</div>
+                  </div>
+                )}
+              </div>
+            )}
+
+          </section>
+          )}
+
+          {activeWorkspaceTab === "solutions" && activeSolutionMode === "new" && typeof document !== "undefined" && createPortal(
+            <>
+              <div className="fixed inset-0 z-[100] bg-slate-900/20 backdrop-blur-[1px]" />
+              <div className="fixed inset-0 z-[101] flex items-center justify-center px-4 py-6">
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="solution-create-title"
+                className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_56px_rgba(15,23,42,0.16)]"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 id="solution-create-title" className="text-lg font-bold text-slate-950">新增企業方案</h2>
+                    <p className="mt-1 text-sm text-slate-500">提交後會進入 Daostore 後台審核，通過後展示到企業方案頁。</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSolutionMode("uploaded")}
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+                    aria-label="關閉新增方案彈窗"
+                  >
+                    <X size={16} strokeWidth={2.2} />
+                  </button>
+                </div>
+
+                <div className="mt-5 grid gap-4 lg:grid-cols-4">
+                  <label className="grid gap-1.5 text-sm font-semibold text-slate-700 lg:col-span-2">
+                    方案名稱
+                    <input
+                      value={solutionForm.title}
+                      onChange={(e) => setSolutionForm((current) => ({ ...current, title: e.target.value }))}
+                      className="input h-10 text-sm font-normal"
+                      placeholder="例如：企業知識庫搭建"
+                    />
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
+                    分類
+                    <input
+                      value={solutionForm.category}
+                      onChange={(e) => setSolutionForm((current) => ({ ...current, category: e.target.value }))}
+                      className="input h-10 text-sm font-normal"
+                      placeholder="例如：企業知識庫"
+                    />
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
+                    Coin 價格
+                    <input
+                      value={solutionForm.budget_range}
+                      onChange={(e) => setSolutionForm((current) => ({ ...current, budget_range: e.target.value }))}
+                      className="input h-10 text-sm font-normal"
+                      placeholder="例如：5000 coin 起"
+                    />
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-semibold text-slate-700 lg:col-span-4">
+                    方案描述
+                    <textarea
+                      value={solutionForm.subtitle}
+                      onChange={(e) => setSolutionForm((current) => ({ ...current, subtitle: e.target.value }))}
+                      className="input min-h-24 py-2 text-sm font-normal"
+                      placeholder="一句話說清楚交付內容、適用場景與可驗收結果"
+                    />
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
+                    行業
+                    <input
+                      value={solutionForm.industry}
+                      onChange={(e) => setSolutionForm((current) => ({ ...current, industry: e.target.value }))}
+                      className="input h-10 text-sm font-normal"
+                      placeholder="例如：零售"
+                    />
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
+                    場景
+                    <input
+                      value={solutionForm.scenario}
+                      onChange={(e) => setSolutionForm((current) => ({ ...current, scenario: e.target.value }))}
+                      className="input h-10 text-sm font-normal"
+                      placeholder="例如：客服提效"
+                    />
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
+                    交付週期
+                    <input
+                      value={solutionForm.delivery_cycle}
+                      onChange={(e) => setSolutionForm((current) => ({ ...current, delivery_cycle: e.target.value }))}
+                      className="input h-10 text-sm font-normal"
+                      placeholder="例如：2-3 週"
+                    />
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
+                    案例數
+                    <input
+                      value={solutionForm.case_count}
+                      onChange={(e) => setSolutionForm((current) => ({ ...current, case_count: e.target.value }))}
+                      className="input h-10 text-sm font-normal"
+                      placeholder="0"
+                      type="number"
+                      min="0"
+                    />
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-semibold text-slate-700 lg:col-span-4">
+                    標籤
+                    <input
+                      value={solutionForm.tags}
+                      onChange={(e) => setSolutionForm((current) => ({ ...current, tags: e.target.value }))}
+                      className="input h-10 text-sm font-normal"
+                      placeholder="用逗號或空格分隔，例如：RAG 知識庫 自動化"
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSolutionMode("uploaded")}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateSolution}
+                    disabled={busyKey === "solution-create"}
+                    className="btn btn-primary btn-sm"
+                  >
+                    {busyKey === "solution-create" ? "提交中..." : "提交審核"}
+                  </button>
+                </div>
+              </div>
+            </div>
+            </>,
+            document.body,
+          )}
+
+          {activeWorkspaceTab === "orders" && (
+          <section className="grid gap-6">
             <div className="space-y-6">
               <div className="card p-5">
                 <div className="flex items-center justify-between gap-4">
@@ -410,8 +729,11 @@ export default function CompanyCenterPage() {
               </div>
             </div>
             </div>
+          </section>
+          )}
 
-            <aside className="space-y-6">
+          {activeWorkspaceTab === "members" && (
+            <section className="grid gap-6 lg:grid-cols-3">
               <MemberSection
                 title="Owner"
                 icon={<Shield size={16} strokeWidth={2} />}
@@ -444,8 +766,8 @@ export default function CompanyCenterPage() {
                   </button>
                 )}
               />
-            </aside>
-          </section>
+            </section>
+          )}
         </div>
       )}
     </main>

@@ -12,6 +12,7 @@ import {
   CalendarDays,
   Clock3,
   Eye,
+  ExternalLink,
   FileText,
   MessageCircle,
   PenLine,
@@ -53,6 +54,57 @@ function getContentHeadings(content: string) {
     .map((line) => line.match(/^#{2,3}\s+(.+)$/)?.[1]?.trim())
     .filter((heading): heading is string => Boolean(heading))
     .slice(0, 6);
+}
+
+function TutorialVideoPlayer({ tutorial }: { tutorial: TutorialDetailOut }) {
+  if (!tutorial.video_url) return null;
+
+  const title = tutorial.video_title || "教程视频";
+  if (tutorial.video_provider === "direct") {
+    return (
+      <section className="mt-8 overflow-hidden rounded bg-slate-950 shadow-sm ring-1 ring-slate-200">
+        <video
+          src={tutorial.video_url}
+          controls
+          preload="metadata"
+          className="aspect-video w-full bg-black"
+        />
+        <div className="flex items-center px-4 py-3 text-sm text-slate-200">
+          <span className="line-clamp-1 font-medium">{title}</span>
+        </div>
+      </section>
+    );
+  }
+
+  if (tutorial.video_embed_url) {
+    return (
+      <section className="mt-8 overflow-hidden rounded bg-slate-950 shadow-sm ring-1 ring-slate-200">
+        <iframe
+          src={tutorial.video_embed_url}
+          title={title}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          sandbox="allow-scripts allow-same-origin allow-presentation"
+          className="aspect-video w-full border-0 bg-black"
+        />
+      </section>
+    );
+  }
+
+  return (
+    <section className="mt-8 rounded border border-slate-200 bg-slate-50 p-4">
+      <div className="text-sm font-semibold text-slate-800">{title}</div>
+      <a
+        href={tutorial.video_url}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+      >
+        打开外部视频
+        <ExternalLink size={14} strokeWidth={2} />
+      </a>
+    </section>
+  );
 }
 
 export default function TutorialDetailPage() {
@@ -181,12 +233,7 @@ export default function TutorialDetailPage() {
             </span>
           </div>
 
-          <div className="mt-8 flex items-center justify-between bg-slate-950 px-5 py-4 text-sm font-bold text-white sm:text-base">
-            <span className="truncate">懂 AI Agent 落地，就來龍蝦學院沉澱實戰方法</span>
-            <Link href="/tutorials/new" className="ml-4 shrink-0 text-brand-100 hover:text-white">
-              立即投稿
-            </Link>
-          </div>
+          <TutorialVideoPlayer tutorial={tutorial} />
         </header>
 
         <section className="mt-8">

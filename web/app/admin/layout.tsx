@@ -5,13 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
-  BadgeCheck,
   Building2,
   ClipboardList,
-  Database,
+  FileCheck2,
   FileSearch,
   LayoutDashboard,
   LogOut,
+  Settings,
   ScrollText,
   Users,
 } from "lucide-react";
@@ -23,11 +23,10 @@ const NAV_ITEMS = [
   { href: "/admin", label: "仪表板", icon: LayoutDashboard, exact: true },
   { href: "/admin/orders", label: "需求訂單", icon: ClipboardList },
   { href: "/admin/companies", label: "咨詢公司管理", icon: Building2 },
-  { href: "/admin/knights", label: "龍蝦騎士管理", icon: BadgeCheck },
+  { href: "/admin/solutions", label: "企業方案審核", icon: FileCheck2 },
   { href: "/admin/users", label: "用户管理", icon: Users },
   { href: "/admin/moderation", label: "内容审核", icon: FileSearch },
-  { href: "/admin/missions", label: "任务管理", icon: ClipboardList },
-  { href: "/admin/sensitive-words", label: "敏感词", icon: Database },
+  { href: "/admin/settings", label: "平台配置", icon: Settings },
   { href: "/admin/audit", label: "稽核日志", icon: ScrollText },
 ];
 

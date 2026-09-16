@@ -1,4 +1,4 @@
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import to_naive_utc, utc_now
@@ -62,12 +62,14 @@ class OrderService:
         return order
 
     async def list_my_orders(self, actor: User, page: int, page_size: int) -> tuple[list[DemandOrderOut], int]:
-        base = select(DemandOrder).where(DemandOrder.creator_id == actor.id)
+        base = select(DemandOrder).where(
+            or_(DemandOrder.creator_id == actor.id, DemandOrder.assigned_fde_user_id == actor.id)
+        )
         return await self._paginate_orders(base, page, page_size)
 
     async def get_my_order(self, order_id: int, actor: User) -> DemandOrder:
         order = await self._get_order(order_id)
-        self._require_creator(order, actor)
+        self._require_creator_or_assigned_fde(order, actor)
         return order
 
     async def list_admin_orders(
@@ -253,6 +255,20 @@ class OrderService:
         await self.session.refresh(order)
         return order
 
+    async def update_work_status(self, order_id: int, actor: User, status: str) -> DemandOrder:
+        order = await self._get_order(order_id)
+        if order.assigned_fde_user_id != actor.id:
+            raise ApiError(code=44020, message="只能更新分派给自己的订单状态", status_code=403)
+        if status == "following":
+            order.status = "requirement_following"
+        elif status == "completed":
+            order.status = "accepted"
+        else:
+            raise ApiError(code=44021, message="订单状态字段不正确", status_code=422)
+        await self.session.commit()
+        await self.session.refresh(order)
+        return order
+
     async def settle_order(self, order_id: int, note: str = "") -> DemandOrder:
         order = await self._get_order(order_id)
         if order.status != "accepted":
@@ -336,6 +352,10 @@ class OrderService:
     def _require_creator(self, order: DemandOrder, actor: User) -> None:
         if order.creator_id != actor.id:
             raise ApiError(code=44008, message="只能操作自己的订单", status_code=403)
+
+    def _require_creator_or_assigned_fde(self, order: DemandOrder, actor: User) -> None:
+        if order.creator_id != actor.id and order.assigned_fde_user_id != actor.id:
+            raise ApiError(code=44008, message="只能查看自己的订单", status_code=403)
 
     async def _require_company_operator(self, company_id: int, user_id: int) -> CompanyMember:
         result = await self.session.execute(

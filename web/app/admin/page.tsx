@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  BadgeCheck,
   Building2,
   CheckCircle2,
   ClipboardCheck,
@@ -203,7 +202,6 @@ function FulfillmentAlerts({ alerts }: { alerts: DashboardData["fulfillment_aler
 function SupplyReadiness({ supply }: { supply: DashboardData["supply_readiness"] }) {
   const rows = [
     { label: "已通過咨詢公司", value: supply.approved_companies, href: "/admin/companies?status=approved", icon: Building2 },
-    { label: "active 龍蝦騎士", value: supply.active_lobster_knights, href: "/admin/knights", icon: BadgeCheck },
     { label: "有 FDE 的公司", value: supply.companies_with_lobster_knights, href: "/admin/companies?status=approved", icon: Users },
     { label: "待處理加入申請", value: supply.pending_join_requests, href: "/admin/companies", icon: ClipboardCheck },
   ];
@@ -244,10 +242,10 @@ function CommunityHealth({ data }: { data: DashboardData }) {
           <div className="text-xs font-semibold text-slate-500">待審核教程</div>
           <div className="mt-2 text-2xl font-bold text-slate-950">{data.pending_tutorials}</div>
         </Link>
-        <Link href="/admin/knights" className="rounded-lg bg-slate-50 p-4 hover:bg-slate-100">
+        <div className="rounded-lg bg-slate-50 p-4">
           <div className="text-xs font-semibold text-slate-500">近 7 日活躍騎士</div>
           <div className="mt-2 text-2xl font-bold text-slate-950">{data.active_knights_7d}</div>
-        </Link>
+        </div>
       </div>
     </section>
   );

@@ -1,6 +1,6 @@
 /** 管理后台 API 类型与接口（docs/3.2.md）。 */
 import { adminApi } from "./admin";
-import type { CompanyOut, DemandOrderOut, Paginated } from "./types";
+import type { CompanyOut, DemandOrderOut, EnterpriseSolutionOut, Paginated } from "./types";
 
 // ---------- 类型 ----------
 
@@ -70,6 +70,11 @@ export interface ModerationDetail {
   target_id: number;
   title: string;
   content: string;
+  video_url: string | null;
+  video_provider: string | null;
+  video_embed_url: string | null;
+  video_title: string | null;
+  video_thumbnail_url: string | null;
   author_id: number;
   author_name: string;
   status: string;
@@ -122,6 +127,13 @@ export interface DashboardData {
   };
 }
 
+export interface QuestionAssistantSettings {
+  enabled: boolean;
+  api_base: string;
+  assistant_display_name: string;
+  api_key_configured: boolean;
+}
+
 // ---------- 登录 ----------
 
 export async function adminLogin(username: string, password: string) {
@@ -136,6 +148,18 @@ export async function adminLogin(username: string, password: string) {
 
 export function getDashboard() {
   return adminApi.get<DashboardData>("/dashboard");
+}
+
+// ---------- 平台配置 ----------
+
+export function getQuestionAssistantSettings() {
+  return adminApi.get<QuestionAssistantSettings>("/settings/question-assistant");
+}
+
+export function updateQuestionAssistantSettings(data: {
+  enabled: boolean;
+}) {
+  return adminApi.patch<QuestionAssistantSettings>("/settings/question-assistant", data);
 }
 
 // ---------- 用户 ----------
@@ -188,6 +212,23 @@ export function listAdminCompanies(params: { page?: number; page_size?: number; 
 
 export function reviewAdminCompany(id: number, status: "requires_changes" | "approved" | "rejected", reason: string) {
   return adminApi.post<CompanyOut>(`/companies/${id}/review`, { status, reason });
+}
+
+// ---------- 企業方案 ----------
+
+export type AdminSolutionStatus = "draft" | "pending" | "approved" | "rejected";
+
+export function listAdminSolutions(params: { page?: number; page_size?: number; status?: AdminSolutionStatus } = {}) {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.page_size) qs.set("page_size", String(params.page_size));
+  if (params.status) qs.set("status", params.status);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return adminApi.get<Paginated<EnterpriseSolutionOut>>(`/solutions${suffix}`);
+}
+
+export function reviewAdminSolution(id: number, status: "approved" | "rejected", reason: string) {
+  return adminApi.post<EnterpriseSolutionOut>(`/solutions/${id}/review`, { status, reason });
 }
 
 // ---------- 需求訂單 ----------

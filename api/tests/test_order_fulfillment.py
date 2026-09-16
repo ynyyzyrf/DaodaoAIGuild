@@ -294,6 +294,70 @@ async def test_assigning_fde_to_order_without_product_syncs_to_pmdesktop_user_vo
     assert assigned_order["pmdesktop_user_voice_id"] == "voice_456"
 
 
+async def test_assigned_fde_can_list_and_view_following_order(client, auth_headers, admin_headers, seed_user, db, monkeypatch):
+    """Catches: assigned lobster knights not seeing their company-dispatched orders."""
+
+    async def fake_sync(order):
+        order.pmdesktop_sync_status = "synced"
+
+    monkeypatch.setattr(order_service_module, "sync_order_to_pmdesktop", fake_sync, raising=False)
+
+    order, company, owner_headers = await _create_claimed_order(client, seed_user, admin_headers, auth_headers)
+    fde, fde_headers = await _create_active_fde_for_company(client, db, seed_user, company["id"])
+
+    assign = await client.post(
+        f"/api/v1/companies/{company['id']}/orders/{order['id']}/assign-fde",
+        headers=owner_headers,
+        json={"fde_user_id": fde.id},
+    )
+    assert assign.status_code == 200
+
+    listing = await client.get("/api/v1/orders/me", headers=fde_headers)
+    assert listing.status_code == 200
+    items = listing.json()["data"]["items"]
+    assert [item["id"] for item in items] == [order["id"]]
+    assert items[0]["assigned_fde_user_id"] == fde.id
+    assert items[0]["status"] == "requirement_following"
+
+    detail = await client.get(f"/api/v1/orders/{order['id']}", headers=fde_headers)
+    assert detail.status_code == 200
+    assert detail.json()["data"]["id"] == order["id"]
+
+
+async def test_assigned_fde_can_mark_order_completed_for_profile_metric(
+    client, auth_headers, admin_headers, seed_user, db, monkeypatch
+):
+    """Catches: completed assigned orders not incrementing the lobster knight profile metric."""
+
+    async def fake_sync(order):
+        order.pmdesktop_sync_status = "synced"
+
+    monkeypatch.setattr(order_service_module, "sync_order_to_pmdesktop", fake_sync, raising=False)
+
+    order, company, owner_headers = await _create_claimed_order(client, seed_user, admin_headers, auth_headers)
+    fde, fde_headers = await _create_active_fde_for_company(client, db, seed_user, company["id"])
+    assign = await client.post(
+        f"/api/v1/companies/{company['id']}/orders/{order['id']}/assign-fde",
+        headers=owner_headers,
+        json={"fde_user_id": fde.id},
+    )
+    assert assign.status_code == 200
+    assert assign.json()["data"]["status"] == "requirement_following"
+
+    update = await client.post(
+        f"/api/v1/orders/{order['id']}/work-status",
+        headers=fde_headers,
+        json={"status": "completed"},
+    )
+
+    assert update.status_code == 200
+    assert update.json()["data"]["status"] == "accepted"
+
+    profile = await client.get(f"/api/v1/users/{fde.id}", headers=fde_headers)
+    assert profile.status_code == 200
+    assert profile.json()["data"]["completed_orders_count"] == 1
+
+
 async def test_order_creator_can_view_detail_but_other_user_cannot(client, auth_headers, seed_user):
     """Catches: my-order list linking to a missing or unprotected detail endpoint."""
     created = await client.post("/api/v1/orders", headers=auth_headers, json=_order_payload())
